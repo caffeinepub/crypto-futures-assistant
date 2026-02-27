@@ -1,0 +1,161 @@
+{
+  "schemaVersion": "1.0.0",
+  "projectStateVersion": 3,
+  "summary": "Professional crypto market assistant PWA (mobile-first, dark-neon theme) focused on Binance USD-M perpetual futures. Frontend: React + TypeScript + Vite with pure TypeScript SMC algorithms (Order Blocks, FVG, BOS/CHoCH) and direct Binance API calls from browser. Backend: Motoko canister on ICP for CoinGecko integration and global pattern scoring system. Authentication: Internet Identity for app access + Binance API Key/Secret stored only on device (never sent to backend). 4 main areas: Market, AI Trade, Search, Preferences. PWA installable with service worker.",
+  "architectural_notes": [
+    "All Binance API access is exclusively from the frontend browser (fapi.binance.com). Backend ICP canister is blocked by Binance IP/region restrictions.",
+    "Binance API Key + Secret stored only in device localStorage/sessionStorage, never sent to backend canister.",
+    "Dual independent authentication: Internet Identity for app access, Binance API Key for fetching open positions.",
+    "SMC algorithms (Order Blocks, FVG, BOS/CHoCH) are pure TypeScript math/logic in the browser — no external ML models.",
+    "Global learning in Motoko is a pattern scoring/counting system (not real ML): tracks which signals preceded significant moves, frequency and reliability rules.",
+    "No simulated data or silent cache — if a data source fails, show explicit error. No fallback to stale data presented as real.",
+    "Binance endpoints used: fapi.binance.com/fapi/v1/ticker/24hr (market data), fapi.binance.com/fapi/v1/positionRisk (positions, requires API Key), api.binance.com/api/v3/trades (trade history). CoinGecko used in backend."
+  ],
+  "known_issues": [],
+  "isFixRequest": false,
+  "imageRequirements": "## Required Images\n- Dark neon circuit-brain icon on black background, glowing green and cyan neural network lines, sharp geometric style (app-icon.dim_512x512.png)\n- Same circuit-brain icon scaled for small display, neon green and cyan on pure black (app-icon-192.dim_192x192.png)\n- Same circuit-brain icon for Apple touch icon, rounded corners safe zone, neon green and cyan on black (app-icon-180.dim_180x180.png)\n- Horizontal app wordmark banner: bold futuristic sans-serif text 'CryptoSMC Pro' in neon green with a subtle circuit-trace underline on dark background (app-wordmark.dim_600x120.png)",
+  "existing_features": [
+    {
+      "id": "feature-set-up-the-react-typescript-frontend-as-a-pwa-with-a-dark-neon-visual-theme-deep-dark-background-0a0a0f-or-similar-high-contrast-neon-accents-green-for-positive-00ff88-red-for-negative-ff2d55-orange-for-alerts-ff9500-and-purple-blue-for-neutral-informational-7b5ea7-00c2ff-apply-the-theme-globally-via-tailwind-configuration-the-layout-must-be-mobile-first-with-a-bottom-navigation-bar-for-the-4-main-areas-include-animated-directional-arrows-and-neon-glow-effects-on-key-indicators",
+      "title": "Set up the React + TypeScript frontend as a PWA with a dark-neon visual theme: deep dark background (#0a0a0f or similar), high-contrast neon accents — green for positive (#00ff88), red for negative (#ff2d55), orange for alerts (#ff9500), and purple/blue for neutral/informational (#7b5ea7 / #00c2ff). Apply the theme globally via Tailwind configuration. The layout must be mobile-first with a bottom navigation bar for the 4 main areas. Include animated directional arrows and neon glow effects on key indicators.",
+      "reqIds": [
+        "REQ-1"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-configure-the-pwa-manifest-manifest-json-with-display-standalone-short-name-and-name-for-the-app-theme-color-matching-the-dark-neon-palette-and-icon-entries-for-android-ios-and-desktop-sizes-192x192-512x512-180x180-apple-touch-icon-register-a-service-worker-for-partial-offline-support-cache-app-shell-and-static-assets-show-explicit-error-when-live-data-is-unavailable-offline-instead-of-serving-stale-data",
+      "title": "Configure the PWA manifest (manifest.json) with display: standalone, short_name and name for the app, theme_color matching the dark-neon palette, and icon entries for Android, iOS, and desktop sizes (192x192, 512x512, 180x180 Apple touch icon). Register a service worker for partial offline support (cache app shell and static assets; show explicit error when live data is unavailable offline instead of serving stale data).",
+      "reqIds": [
+        "REQ-2"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-implement-the-market-tab-fetch-the-full-list-of-binance-usd-m-perpetual-futures-tickers-in-real-time-from-https-fapi-binance-com-fapi-v1-ticker-24hr-directly-in-the-browser-display-each-asset-with-current-price-24h-price-change-24h-volume-and-a-neon-directional-signal-badge-green-up-arrow-for-positive-red-down-arrow-for-negative-orange-for-near-zero-refresh-data-every-5-seconds-if-the-binance-api-call-fails-display-an-explicit-error-message-no-silent-fallback-to-cached-stale-prices",
+      "title": "Implement the Market tab: fetch the full list of Binance USD-M perpetual futures tickers in real-time from https://fapi.binance.com/fapi/v1/ticker/24hr directly in the browser. Display each asset with: current price, 24h price change (%), 24h volume, and a neon directional signal badge (green up arrow for positive, red down arrow for negative, orange for near-zero). Refresh data every 5 seconds. If the Binance API call fails, display an explicit error message — no silent fallback to cached/stale prices.",
+      "reqIds": [
+        "REQ-3"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-implement-the-core-smc-analysis-engine-in-typescript-browser-side-no-external-ai-dependencies-the-engine-must-process-ohlcv-candle-data-for-a-given-symbol-and-detect-1-order-blocks-last-significant-bullish-bearish-candle-before-a-strong-move-2-fair-value-gaps-fvg-three-candle-imbalance-gaps-3-break-of-structure-bos-price-breaking-a-prior-swing-high-low-in-the-same-direction-4-change-of-character-choch-price-breaking-structure-in-the-opposite-direction-5-liquidity-zones-swing-highs-lows-where-stop-orders-cluster-the-engine-must-return-structured-signal-objects-with-type-price-level-direction-bullish-bearish-and-confidence-score-0-100-based-on-pattern-clarity",
+      "title": "Implement the core SMC analysis engine in TypeScript (browser-side, no external AI dependencies). The engine must process OHLCV candle data for a given symbol and detect: (1) Order Blocks — last significant bullish/bearish candle before a strong move, (2) Fair Value Gaps (FVG) — three-candle imbalance gaps, (3) Break of Structure (BOS) — price breaking a prior swing high/low in the same direction, (4) Change of Character (CHoCH) — price breaking structure in the opposite direction, (5) Liquidity zones — swing highs/lows where stop orders cluster. The engine must return structured signal objects with type, price level, direction (bullish/bearish), and confidence score (0–100) based on pattern clarity.",
+      "reqIds": [
+        "REQ-4"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-implement-the-ai-trade-tab-display-smc-based-trade-recommendations-for-a-whitelist-of-high-liquidity-assets-at-minimum-btcusdt-ethusdt-solusdt-bnbusdt-xrpusdt-adausdt-avaxusdt-dogeusdt-for-each-asset-run-the-smc-engine-and-show-detected-signals-order-block-fvg-bos-choch-liquidity-zone-signal-direction-bullish-bearish-confidence-score-with-a-neon-progress-bar-and-a-combined-recommendation-label-strong-buy-buy-neutral-sell-strong-sell-user-favorited-assets-from-preferences-appear-first-and-have-their-signals-weighted-with-a-bonus-score-show-local-learning-indicator-from-device-storage-and-global-learning-indicator-from-motoko-backend-score-for-that-symbol",
+      "title": "Implement the AI Trade tab: display SMC-based trade recommendations for a whitelist of high-liquidity assets (at minimum: BTCUSDT, ETHUSDT, SOLUSDT, BNBUSDT, XRPUSDT, ADAUSDT, AVAXUSDT, DOGEUSDT). For each asset, run the SMC engine and show: detected signals (Order Block, FVG, BOS, CHoCH, Liquidity Zone), signal direction (bullish/bearish), confidence score with a neon progress bar, and a combined recommendation label (Strong Buy / Buy / Neutral / Sell / Strong Sell). User-favorited assets (from Preferences) appear first and have their signals weighted with a bonus score. Show local learning indicator (from device storage) and global learning indicator (from Motoko backend score for that symbol).",
+      "reqIds": [
+        "REQ-5"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-implement-the-local-learning-system-device-side-store-a-per-symbol-pattern-log-in-localstorage-tracking-how-many-times-each-smc-signal-type-was-detected-and-how-often-it-preceded-a-significant-price-move-1-within-the-next-3-data-points-compute-a-local-reliability-score-per-symbol-signal-combination-provide-a-reset-function-that-clears-all-local-learning-data-this-local-data-influences-the-confidence-score-shown-in-the-ai-trade-tab-for-the-local-indicator",
+      "title": "Implement the local learning system (device-side): store a per-symbol pattern log in localStorage tracking how many times each SMC signal type was detected and how often it preceded a significant price move (>1% within the next 3 data points). Compute a local reliability score per symbol+signal combination. Provide a reset function that clears all local learning data. This local data influences the confidence score shown in the AI Trade tab for the local indicator.",
+      "reqIds": [
+        "REQ-6"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-implement-the-search-tab-provide-a-search-input-for-any-binance-usd-m-perpetual-pair-e-g-linkusdt-on-search-fetch-live-ticker-data-for-the-pair-from-https-fapi-binance-com-fapi-v1-ticker-24hr-symbol-pair-and-run-the-full-smc-engine-on-it-displaying-the-same-signal-breakdown-as-the-ai-trade-tab-include-a-dedicated-open-positions-section-the-user-can-enter-their-binance-api-key-and-secret-key-stored-only-in-sessionstorage-localstorage-on-the-device-never-sent-to-the-backend-use-these-credentials-to-call-https-fapi-binance-com-fapi-v1-positionrisk-with-hmac-sha256-signature-in-the-browser-poll-positions-every-5-10-seconds-display-each-open-position-with-symbol-side-long-short-entry-price-mark-price-unrealized-p-l-with-neon-green-red-coloring-leverage-and-liquidation-price-show-visual-p-l-alerts-when-p-l-exceeds-configurable-thresholds",
+      "title": "Implement the Search tab: provide a search input for any Binance USD-M perpetual pair (e.g., 'LINKUSDT'). On search, fetch live ticker data for the pair from https://fapi.binance.com/fapi/v1/ticker/24hr?symbol={PAIR} and run the full SMC engine on it, displaying the same signal breakdown as the AI Trade tab. Include a dedicated 'Open Positions' section: the user can enter their Binance API Key and Secret Key (stored only in sessionStorage/localStorage on the device, never sent to the backend). Use these credentials to call https://fapi.binance.com/fapi/v1/positionRisk with HMAC-SHA256 signature in the browser. Poll positions every 5–10 seconds. Display each open position with: symbol, side (Long/Short), entry price, mark price, unrealized P&L (with neon green/red coloring), leverage, and liquidation price. Show visual P&L alerts when P&L exceeds configurable thresholds.",
+      "reqIds": [
+        "REQ-8"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-implement-the-preferences-tab-1-favorite-assets-allow-the-user-to-select-deselect-assets-from-the-whitelist-as-favorites-persist-selections-in-localstorage-2-local-learning-reset-a-clearly-labeled-button-that-clears-all-local-smc-pattern-learning-data-from-localstorage-with-a-confirmation-dialog-3-binance-api-key-management-show-fields-to-enter-update-clear-the-stored-api-key-and-secret-key-for-position-monitoring-4-visual-settings-toggle-for-notification-alerts-on-significant-p-l-changes",
+      "title": "Implement the Preferences tab: (1) Favorite assets — allow the user to select/deselect assets from the whitelist as favorites; persist selections in localStorage. (2) Local learning reset — a clearly labeled button that clears all local SMC pattern learning data from localStorage with a confirmation dialog. (3) Binance API Key management — show fields to enter/update/clear the stored API Key and Secret Key for position monitoring. (4) Visual settings — toggle for notification alerts on significant P&L changes.",
+      "reqIds": [
+        "REQ-9"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-implement-internet-identity-authentication-protect-the-search-tab-s-open-positions-section-and-the-preferences-tab-s-api-key-management-section-behind-an-internet-identity-login-gate-unauthenticated-users-can-still-browse-the-market-and-ai-trade-tabs-freely-show-a-prominent-connect-with-internet-identity-button-for-gated-sections-after-login-the-user-s-principal-is-used-to-associate-their-global-learning-contributions-in-the-motoko-backend",
+      "title": "Implement Internet Identity authentication: protect the Search tab's Open Positions section and the Preferences tab's API Key management section behind an Internet Identity login gate. Unauthenticated users can still browse the Market and AI Trade tabs freely. Show a prominent 'Connect with Internet Identity' button for gated sections. After login, the user's principal is used to associate their global learning contributions in the Motoko backend.",
+      "reqIds": [
+        "REQ-10"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-render-the-generated-pwa-icons-and-app-logo-as-static-assets-in-frontend-public-assets-generated-use-the-neon-circuit-brain-icon-512x512-and-192x192-as-the-pwa-manifest-icons-and-apple-touch-icon-and-the-app-wordmark-banner-as-the-splash-screen-and-header-logo",
+      "title": "Render the generated PWA icons and app logo as static assets in frontend/public/assets/generated. Use the neon circuit brain icon (512x512 and 192x192) as the PWA manifest icons and Apple touch icon, and the app wordmark/banner as the splash screen and header logo.",
+      "reqIds": [
+        "REQ-11"
+      ],
+      "version": 1
+    }
+  ],
+  "new_feature_requests": [
+    {
+      "id": "AR-1",
+      "summary": "Market area: real-time list of Binance USD-M perpetual assets with prices, 24h variation, volume, liquidity, and neon directional signals",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-2",
+      "summary": "AI Trade area: SMC-based recommendations using Order Blocks, FVG, BOS/CHoCH, liquidity zones with whitelist of high-liquidity assets (BTC, ETH, SOL, etc.)",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-3",
+      "summary": "Split learning system: local (device, resettable) and global (Motoko backend, permanent) pattern scoring based on signal frequency and reliability",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-4",
+      "summary": "Search area: universal search for any USD-M pair with dynamic SMC analysis and open position monitoring via Binance API Key/Secret (read-only, browser-only, polling every 5-10s) with P&L alerts",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-5",
+      "summary": "Preferences area: favorite assets selection (influences AI), local learning/cache reset button, visual and notification settings",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-6",
+      "summary": "PWA setup: manifest.json with standalone display, service worker for partial offline support, icons for all platforms (Android, iOS, desktop)",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-7",
+      "summary": "Internet Identity authentication for app and positions area access",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-8",
+      "summary": "Motoko backend canister: CoinGecko integration for general market context and global pattern scoring persistence",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-15",
+      "summary": "Implement the Motoko backend canister with: (1) Global pattern scoring system — store per-symbol pattern counts, signal type, occurrence count, and how many times each signal type preceded a significant move. Expose update functions to record new signal observations and query functions to retrieve global scores per symbol. (2) CoinGecko integration — fetch general market context (BTC, ETH, SOL prices in USD) from https://api.coingecko.com/api/v3/simple/price via HTTP outcalls. Expose a query endpoint that returns the cached CoinGecko prices. The global learning data must be persistent across canister upgrades (use stable variables).",
+      "reqIds": [
+        "REQ-7"
+      ],
+      "status": "pending"
+    }
+  ],
+  "gameProjectType": "none",
+  "projectName": "Crypto Futures Assistant",
+  "clarification_mode": "instant",
+  "clarification_rounds": 0
+}

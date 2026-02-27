@@ -1,0 +1,274 @@
+{
+  "kind": "implementation_plan",
+  "version": "1.0",
+  "title": "Professional Crypto Futures Assistant PWA — Frontend Implementation",
+  "requirements": [
+    {
+      "id": "REQ-1",
+      "summary": "Set up dark-neon visual theme with mobile-first layout and bottom navigation",
+      "acceptanceCriteria": [
+        "Dark background renders globally across all pages",
+        "Neon green/red/orange/purple color tokens are defined in Tailwind config",
+        "Bottom navigation bar with icons for Market, AI Trade, Search, and Preferences tabs is visible on mobile",
+        "Directional indicators include animated neon arrows",
+        "Neon glow CSS effects are applied to key metric values"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/tailwind.config.js",
+          "operation": "modify",
+          "description": "Extend the Tailwind theme configuration to include dark-neon color palette: background (#0a0a0f), neon-green (#00ff88), neon-red (#ff2d55), neon-orange (#ff9500), neon-purple (#7b5ea7), and neon-blue (#00c2ff). Add custom animation keyframes for directional arrows and glow effects."
+        },
+        {
+          "path": "frontend/src/index.css",
+          "operation": "modify",
+          "description": "Apply global dark background styling and define neon glow CSS classes (e.g., .neon-glow-green, .neon-glow-red) using box-shadow and text-shadow. Add keyframe animations for pulsing arrows and glowing indicators."
+        },
+        {
+          "path": "frontend/src/components/BottomNav.tsx",
+          "operation": "create",
+          "description": "Create a mobile-first bottom navigation bar component with four tabs: Market, AI Trade, Search, and Preferences. Use React Router NavLink for active state. Include neon-styled icons for each tab with active/inactive states. Ensure fixed positioning at the bottom of the viewport on mobile."
+        },
+        {
+          "path": "frontend/src/App.tsx",
+          "operation": "modify",
+          "description": "Integrate the BottomNav component into the main App layout. Set up React Router routes for Market, AI Trade, Search, and Preferences tabs. Apply dark background styling to the root container. Ensure the layout accommodates the fixed bottom navigation bar on mobile."
+        }
+      ]
+    },
+    {
+      "id": "REQ-2",
+      "summary": "Configure PWA manifest and service worker for offline support",
+      "acceptanceCriteria": [
+        "manifest.json exists with display: standalone and correct icon references",
+        "Service worker is registered and caches app shell assets",
+        "App can be installed on Android, iOS, and desktop via browser install prompt",
+        "Offline state shows explicit 'No live data available offline' error rather than stale data"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/public/manifest.json",
+          "operation": "create",
+          "description": "Create the PWA manifest with display: standalone, short_name 'CryptoSMC', name 'CryptoSMC Pro', theme_color matching the dark-neon palette (#0a0a0f), and icon entries referencing frontend/public/assets/generated/app-icon.dim_512x512.png, frontend/public/assets/generated/app-icon-192.dim_192x192.png, and frontend/public/assets/generated/app-icon-180.dim_180x180.png for Android, iOS, and desktop."
+        },
+        {
+          "path": "frontend/public/service-worker.js",
+          "operation": "create",
+          "description": "Create a service worker that caches the app shell and static assets on install. On fetch, serve cached assets when offline but do not serve stale API data. For API requests (fapi.binance.com, coingecko.com), fail explicitly with a network error when offline instead of returning cached responses."
+        },
+        {
+          "path": "frontend/index.html",
+          "operation": "modify",
+          "description": "Add manifest link in the <head> section: <link rel=\"manifest\" href=\"/manifest.json\">. Add Apple touch icon meta tag referencing frontend/public/assets/generated/app-icon-180.dim_180x180.png. Add theme-color meta tag with #0a0a0f. Register the service worker in a <script> block at the end of <body>."
+        }
+      ]
+    },
+    {
+      "id": "REQ-3",
+      "summary": "Implement Market tab with real-time Binance perpetual futures ticker list",
+      "acceptanceCriteria": [
+        "Market tab lists all USD-M perpetual pairs fetched from fapi.binance.com/fapi/v1/ticker/24hr",
+        "Each row shows price, 24h change %, and volume with neon color coding",
+        "Data auto-refreshes every 5 seconds via polling",
+        "A visible error banner appears if the API request fails instead of showing stale data"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/pages/MarketTab.tsx",
+          "operation": "create",
+          "description": "Create the Market tab page component. Fetch the full list of Binance USD-M perpetual futures tickers from https://fapi.binance.com/fapi/v1/ticker/24hr directly in the browser using fetch. Display each asset with current price, 24h price change (%), 24h volume, and a neon directional signal badge (green up arrow for positive, red down arrow for negative, orange for near-zero). Use useEffect with setInterval to auto-refresh data every 5 seconds. On API failure, display an explicit error banner with retry option instead of showing stale data."
+        },
+        {
+          "path": "frontend/src/components/AssetRow.tsx",
+          "operation": "create",
+          "description": "Create a reusable AssetRow component that displays a single asset's ticker data: symbol, price, 24h change percentage with neon color coding (green for positive, red for negative, orange for near-zero), volume, and an animated directional arrow badge. Apply neon glow effects to the change percentage and arrow."
+        }
+      ]
+    },
+    {
+      "id": "REQ-4",
+      "summary": "Implement browser-side SMC analysis engine in TypeScript",
+      "acceptanceCriteria": [
+        "A TypeScript module (e.g., smc-engine.ts) exists with exported functions for each SMC pattern",
+        "Each function accepts an array of OHLCV candles and returns typed signal objects",
+        "Signal objects include: type, priceLevel, direction (bullish | bearish), and confidenceScore (0–100)",
+        "No external API or AI service is called from this module",
+        "Logic is deterministic and testable with the same candle input producing the same output"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/lib/smc-engine.ts",
+          "operation": "create",
+          "description": "Create the SMC analysis engine module. Define OHLCV candle type and SMCSignal type (with type, priceLevel, direction: 'bullish' | 'bearish', confidenceScore: 0-100). Implement pure TypeScript functions to detect: (1) Order Blocks — last significant bullish/bearish candle before a strong move, (2) Fair Value Gaps (FVG) — three-candle imbalance gaps, (3) Break of Structure (BOS) — price breaking a prior swing high/low in the same direction, (4) Change of Character (CHoCH) — price breaking structure in the opposite direction, (5) Liquidity zones — swing highs/lows where stop orders cluster. Each function returns an array of SMCSignal objects. Confidence score is computed based on pattern clarity (e.g., gap size for FVG, candle body size for Order Blocks)."
+        },
+        {
+          "path": "frontend/src/lib/smc-types.ts",
+          "operation": "create",
+          "description": "Define shared TypeScript types for SMC analysis: OHLCVCandle (open, high, low, close, volume, timestamp), SMCSignal (type: 'OrderBlock' | 'FVG' | 'BOS' | 'CHoCH' | 'LiquidityZone', priceLevel: number, direction: 'bullish' | 'bearish', confidenceScore: number), and helper types for swing points and structure breaks."
+        }
+      ]
+    },
+    {
+      "id": "REQ-5",
+      "summary": "Implement AI Trade tab with SMC-based trade recommendations for whitelisted assets",
+      "acceptanceCriteria": [
+        "AI Trade tab shows recommendation cards for all whitelist assets",
+        "Each card displays detected SMC signals, direction, confidence score, and recommendation label",
+        "Favorited assets appear at the top of the list with a visual favorite indicator",
+        "Local score (from localStorage) and global score (from Motoko) are both shown per asset",
+        "Neon color-coded confidence bars render for each signal"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/pages/AITradeTab.tsx",
+          "operation": "create",
+          "description": "Create the AI Trade tab page component. Define a whitelist of high-liquidity assets: BTCUSDT, ETHUSDT, SOLUSDT, BNBUSDT, XRPUSDT, ADAUSDT, AVAXUSDT, DOGEUSDT. For each asset, fetch ticker data from Binance, run the SMC engine (from smc-engine.ts), and display detected signals with direction, confidence score (neon progress bar), and a combined recommendation label (Strong Buy / Buy / Neutral / Sell / Strong Sell). Retrieve favorited assets from localStorage; display them first with a star icon. Fetch global pattern scores from the Motoko backend via actor.getPatternScores(symbol) and local scores from localStorage. Show both local and global learning indicators per asset."
+        },
+        {
+          "path": "frontend/src/components/RecommendationCard.tsx",
+          "operation": "create",
+          "description": "Create a RecommendationCard component that displays a single asset's SMC analysis results: symbol, detected signals (Order Block, FVG, BOS, CHoCH, Liquidity Zone), signal direction (bullish/bearish badge), confidence score with neon-colored progress bar, and recommendation label (Strong Buy / Buy / Neutral / Sell / Strong Sell). Include favorite star indicator if the asset is favorited. Display local and global learning scores below the signals."
+        },
+        {
+          "path": "frontend/src/hooks/useLocalLearning.ts",
+          "operation": "create",
+          "description": "Create a custom React hook that manages local learning data in localStorage. Provide functions to: retrieve local pattern scores per symbol and signal type, update pattern counts when new signals are detected, compute local reliability score (successful_signals / total_signals), and reset all local learning data. Store data under a 'cryptosmc-local-learning' localStorage key."
+        },
+        {
+          "path": "frontend/src/hooks/useGlobalLearning.ts",
+          "operation": "create",
+          "description": "Create a custom React hook that fetches global pattern scores from the Motoko backend using actor.getPatternScores(symbol) and actor.getAllPatternScores(). Use React Query for caching and refetching. Provide functions to record new signal observations via actor.recordSignalObservation(symbol, signalType, precededSignificantMove)."
+        }
+      ]
+    },
+    {
+      "id": "REQ-6",
+      "summary": "Implement local learning system with device-side pattern tracking",
+      "acceptanceCriteria": [
+        "Pattern counts and outcome results are persisted in localStorage under a defined key",
+        "Local reliability score is computed as (successful_signals / total_signals) per symbol+type",
+        "Reset function clears all local learning data from localStorage",
+        "Local learning data updates when new signals are detected on the AI Trade or Search tabs"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/lib/local-learning.ts",
+          "operation": "create",
+          "description": "Create a local learning utility module. Define a LocalPatternLog type with symbol, signalType, occurrenceCount, and precedingMoveCount fields. Implement functions to: load pattern log from localStorage (key: 'cryptosmc-local-learning'), save pattern log to localStorage, record a new signal observation (increment occurrenceCount and conditionally increment precedingMoveCount if the signal preceded a >1% move within 3 data points), compute local reliability score per symbol+signal combination (precedingMoveCount / occurrenceCount), and reset all local learning data (clear localStorage key). Ensure thread-safe writes by reading, modifying, and writing the full log atomically."
+        }
+      ]
+    },
+    {
+      "id": "REQ-8",
+      "summary": "Implement Search tab with universal pair search and Open Positions monitoring",
+      "acceptanceCriteria": [
+        "Search input accepts any USD-M pair symbol and fetches live Binance ticker data",
+        "SMC analysis results are shown for the searched pair",
+        "API Key and Secret fields are present; values are stored in localStorage/sessionStorage only",
+        "Position data is fetched from fapi.binance.com/fapi/v1/positionRisk using HMAC-SHA256 signed requests in the browser",
+        "Positions poll every 5–10 seconds and display symbol, side, entry price, mark price, PnL, leverage, liquidation price",
+        "API credentials are never included in any request to the Motoko backend",
+        "P&L values are color-coded neon green (profit) or neon red (loss)"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/pages/SearchTab.tsx",
+          "operation": "create",
+          "description": "Create the Search tab page component. Include a search input for any Binance USD-M perpetual pair (e.g., 'LINKUSDT'). On search, fetch live ticker data from https://fapi.binance.com/fapi/v1/ticker/24hr?symbol={PAIR} and run the SMC engine to display signal breakdown (same as AI Trade tab). Include an 'Open Positions' section that is gated by Internet Identity authentication (show 'Connect with Internet Identity' button if not logged in). Use the authorization component to enforce authentication. Once authenticated, show API Key and Secret Key input fields (stored in localStorage, never sent to backend). After credentials are entered, poll https://fapi.binance.com/fapi/v1/positionRisk every 5–10 seconds using HMAC-SHA256 signed requests (via binance-auth.ts). Display each open position with: symbol, side (Long/Short), entry price, mark price, unrealized P&L (neon green for profit, neon red for loss), leverage, and liquidation price. Show P&L alerts when thresholds are exceeded."
+        },
+        {
+          "path": "frontend/src/lib/binance-auth.ts",
+          "operation": "create",
+          "description": "Create a Binance authentication utility module for browser-side HMAC-SHA256 signing. Implement functions to: generate a query string with timestamp and signature using the Web Crypto API, sign API requests with the user's API Key and Secret Key (retrieved from localStorage), and construct authenticated fetch requests to Binance endpoints (fapi.binance.com/fapi/v1/positionRisk). Never send API credentials to the Motoko backend. Handle signature errors and display explicit error messages."
+        },
+        {
+          "path": "frontend/src/components/PositionRow.tsx",
+          "operation": "create",
+          "description": "Create a PositionRow component that displays a single open position: symbol, side (Long/Short badge), entry price, mark price, unrealized P&L with neon color coding (green for profit, red for loss) and glow effect, leverage, and liquidation price. Include a visual P&L alert indicator when P&L exceeds configurable thresholds."
+        }
+      ]
+    },
+    {
+      "id": "REQ-9",
+      "summary": "Implement Preferences tab with favorites, local learning reset, API key management, and visual settings",
+      "acceptanceCriteria": [
+        "Favorites selection persists to localStorage and is reflected on the AI Trade tab ordering",
+        "Reset local learning button shows a confirmation dialog before clearing data",
+        "API Key and Secret Key can be entered, updated, and cleared from the Preferences tab",
+        "P&L alert toggle is present and its state persists across sessions"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/pages/PreferencesTab.tsx",
+          "operation": "create",
+          "description": "Create the Preferences tab page component. Include sections for: (1) Favorite assets — multi-select checkboxes for the whitelist assets (BTCUSDT, ETHUSDT, etc.), persisted to localStorage (key: 'cryptosmc-favorites'). (2) Local learning reset — a clearly labeled button that shows a confirmation dialog before calling the reset function from local-learning.ts to clear all local SMC pattern learning data. (3) Binance API Key management — gated by Internet Identity authentication (use the authorization component). Show input fields to enter/update/clear the API Key and Secret Key; store values in localStorage (key: 'cryptosmc-binance-api-key', 'cryptosmc-binance-secret-key'). (4) Visual settings — toggle for P&L notification alerts, persisted to localStorage (key: 'cryptosmc-pnl-alerts-enabled')."
+        },
+        {
+          "path": "frontend/src/hooks/useFavorites.ts",
+          "operation": "create",
+          "description": "Create a custom React hook that manages favorite assets in localStorage. Provide functions to: retrieve the list of favorited symbols, add/remove a symbol from favorites, and check if a symbol is favorited. Store data under 'cryptosmc-favorites' localStorage key. Trigger re-renders when favorites change."
+        }
+      ]
+    },
+    {
+      "id": "REQ-10",
+      "summary": "Implement Internet Identity authentication gating for Open Positions and API Key management",
+      "acceptanceCriteria": [
+        "Market and AI Trade tabs are fully accessible without authentication",
+        "Open Positions section in Search tab shows 'Connect with Internet Identity' button when not logged in",
+        "API Key management in Preferences tab is gated behind Internet Identity login",
+        "After successful login, user principal is available and used for backend calls",
+        "Logout option is available and clears the authenticated session"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/AuthGate.tsx",
+          "operation": "create",
+          "description": "Create an AuthGate component that wraps sections requiring Internet Identity authentication. Use the authorization component's useInternetIdentity hook to check authentication state. If not authenticated, display a prominent 'Connect with Internet Identity' button. If authenticated, render children. Include logout option and display the user's principal or user profile name. Ensure that after login, the user principal is available for backend calls (e.g., actor.recordSignalObservation)."
+        },
+        {
+          "path": "frontend/src/pages/SearchTab.tsx",
+          "operation": "modify",
+          "description": "Wrap the 'Open Positions' section in the AuthGate component to enforce Internet Identity authentication. Unauthenticated users see the 'Connect with Internet Identity' button; authenticated users see the API Key input fields and position list."
+        },
+        {
+          "path": "frontend/src/pages/PreferencesTab.tsx",
+          "operation": "modify",
+          "description": "Wrap the Binance API Key management section in the AuthGate component to enforce Internet Identity authentication. Only authenticated users can enter/update/clear their API credentials."
+        }
+      ]
+    },
+    {
+      "id": "REQ-11",
+      "summary": "Wire generated PWA icons and app logo as static assets",
+      "acceptanceCriteria": [
+        "manifest.json references the generated icon files in frontend/public/assets/generated",
+        "192x192 and 512x512 icons are present and correctly linked",
+        "Apple touch icon (180x180) is referenced in the HTML head",
+        "App header displays the wordmark/logo asset"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/public/manifest.json",
+          "operation": "modify",
+          "description": "Update the manifest.json icons array to reference the generated neon circuit-brain icon files at frontend/public/assets/generated/app-icon.dim_512x512.png (512x512) and frontend/public/assets/generated/app-icon-192.dim_192x192.png (192x192). Ensure the paths are correct and the icons are used for Android, iOS, and desktop."
+        },
+        {
+          "path": "frontend/index.html",
+          "operation": "modify",
+          "description": "Add an Apple touch icon link in the <head> section referencing frontend/public/assets/generated/app-icon-180.dim_180x180.png. Ensure the manifest link and theme-color meta tag are present. Add a reference to the app wordmark/logo asset frontend/public/assets/generated/app-wordmark.dim_600x120.png for use in the header or splash screen."
+        },
+        {
+          "path": "frontend/src/components/AppHeader.tsx",
+          "operation": "create",
+          "description": "Create an AppHeader component that displays the app wordmark/logo from frontend/public/assets/generated/app-wordmark.dim_600x120.png. Include the logout button from the authorization component when the user is authenticated. Apply dark-neon styling to the header background and logo."
+        },
+        {
+          "path": "frontend/src/App.tsx",
+          "operation": "modify",
+          "description": "Integrate the AppHeader component into the main App layout at the top of the page, above the router outlet and bottom navigation bar."
+        }
+      ]
+    }
+  ]
+}
