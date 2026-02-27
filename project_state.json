@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "projectStateVersion": 3,
+  "projectStateVersion": 5,
   "summary": "Professional crypto market assistant PWA (mobile-first, dark-neon theme) focused on Binance USD-M perpetual futures. Frontend: React + TypeScript + Vite with pure TypeScript SMC algorithms (Order Blocks, FVG, BOS/CHoCH) and direct Binance API calls from browser. Backend: Motoko canister on ICP for CoinGecko integration and global pattern scoring system. Authentication: Internet Identity for app access + Binance API Key/Secret stored only on device (never sent to backend). 4 main areas: Market, AI Trade, Search, Preferences. PWA installable with service worker.",
   "architectural_notes": [
     "All Binance API access is exclusively from the frontend browser (fapi.binance.com). Backend ICP canister is blocked by Binance IP/region restrictions.",
@@ -9,11 +9,13 @@
     "SMC algorithms (Order Blocks, FVG, BOS/CHoCH) are pure TypeScript math/logic in the browser — no external ML models.",
     "Global learning in Motoko is a pattern scoring/counting system (not real ML): tracks which signals preceded significant moves, frequency and reliability rules.",
     "No simulated data or silent cache — if a data source fails, show explicit error. No fallback to stale data presented as real.",
-    "Binance endpoints used: fapi.binance.com/fapi/v1/ticker/24hr (market data), fapi.binance.com/fapi/v1/positionRisk (positions, requires API Key), api.binance.com/api/v3/trades (trade history). CoinGecko used in backend."
+    "Binance endpoints used: fapi.binance.com/fapi/v1/ticker/24hr (market data), fapi.binance.com/fapi/v1/positionRisk (positions, requires API Key), api.binance.com/api/v3/trades (trade history). CoinGecko used in backend.",
+    "Service worker must NOT intercept requests to external domains (fapi.binance.com, api.binance.com, api.coingecko.com) — these must always go directly to the network. Offline error should only appear when the device truly has no connection."
   ],
-  "known_issues": [],
-  "isFixRequest": false,
-  "imageRequirements": "## Required Images\n- Dark neon circuit-brain icon on black background, glowing green and cyan neural network lines, sharp geometric style (app-icon.dim_512x512.png)\n- Same circuit-brain icon scaled for small display, neon green and cyan on pure black (app-icon-192.dim_192x192.png)\n- Same circuit-brain icon for Apple touch icon, rounded corners safe zone, neon green and cyan on black (app-icon-180.dim_180x180.png)\n- Horizontal app wordmark banner: bold futuristic sans-serif text 'CryptoSMC Pro' in neon green with a subtle circuit-trace underline on dark background (app-wordmark.dim_600x120.png)",
+  "known_issues": [
+    "Search tab shows 'Binance API error 503: No live data available offline' — service worker incorrectly intercepts Binance API calls and returns offline error instead of passing them through to the network."
+  ],
+  "isFixRequest": true,
   "existing_features": [
     {
       "id": "feature-set-up-the-react-typescript-frontend-as-a-pwa-with-a-dark-neon-visual-theme-deep-dark-background-0a0a0f-or-similar-high-contrast-neon-accents-green-for-positive-00ff88-red-for-negative-ff2d55-orange-for-alerts-ff9500-and-purple-blue-for-neutral-informational-7b5ea7-00c2ff-apply-the-theme-globally-via-tailwind-configuration-the-layout-must-be-mobile-first-with-a-bottom-navigation-bar-for-the-4-main-areas-include-animated-directional-arrows-and-neon-glow-effects-on-key-indicators",
@@ -92,6 +94,14 @@
       "title": "Render the generated PWA icons and app logo as static assets in frontend/public/assets/generated. Use the neon circuit brain icon (512x512 and 192x192) as the PWA manifest icons and Apple touch icon, and the app wordmark/banner as the splash screen and header logo.",
       "reqIds": [
         "REQ-11"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-fix-the-service-worker-in-frontend-public-service-worker-js-so-that-requests-to-external-api-domains-fapi-binance-com-api-binance-com-api-coingecko-com-and-any-icp-ic-endpoints-are-never-intercepted-or-cached-they-must-always-pass-through-directly-to-the-network-remove-any-fetch-event-handler-logic-that-returns-a-503-offline-error-for-these-domains-when-the-device-has-an-active-network-connection-the-offline-503-error-response-should-only-be-triggered-for-those-api-domains-when-the-device-is-genuinely-offline-navigator-online-false-all-app-shell-and-static-asset-caching-behavior-should-remain-unchanged",
+      "title": "Fix the service worker in frontend/public/service-worker.js so that requests to external API domains (fapi.binance.com, api.binance.com, api.coingecko.com, and any ICP/IC endpoints) are NEVER intercepted or cached — they must always pass through directly to the network. Remove any fetch event handler logic that returns a 503 offline error for these domains when the device has an active network connection. The offline 503 error response should only be triggered for those API domains when the device is genuinely offline (navigator.onLine === false). All app-shell and static asset caching behavior should remain unchanged.",
+      "reqIds": [
+        "REQ-12"
       ],
       "version": 1
     }

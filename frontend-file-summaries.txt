@@ -1,0 +1,3 @@
+{
+  "frontend/public/service-worker.js": "PWA service worker that caches app-shell assets (cache-first) and now correctly bypasses interception for all external API domains (fapi.binance.com, api.binance.com, api.coingecko.com, ICP endpoints) when the device is online, only returning a 503 offline error when navigator.onLine is false."
+}

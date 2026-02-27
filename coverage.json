@@ -1,292 +1,35 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-27T00:07:14.385Z",
+  "generatedAt": "2026-02-27T00:26:04.447Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 11,
-    "implemented": 10,
+    "total": 1,
+    "implemented": 1,
     "items": [
       {
-        "id": "REQ-1",
-        "summary": "Set up the React + TypeScript frontend as a PWA with a dark-neon visual theme: deep dark background (#0a0a0f or similar), high-contrast neon accents — green for positive (#00ff88), red for negative (#ff2d55), orange for alerts (#ff9500), and purple/blue for neutral/informational (#7b5ea7 / #00c2ff). Apply the theme globally via Tailwind configuration. The layout must be mobile-first with a bottom navigation bar for the 4 main areas. Include animated directional arrows and neon glow effects on key indicators.",
+        "id": "REQ-12",
+        "summary": "Fix the service worker in frontend/public/service-worker.js so that requests to external API domains (fapi.binance.com, api.binance.com, api.coingecko.com, and any ICP/IC endpoints) are NEVER intercepted or cached — they must always pass through directly to the network. Remove any fetch event handler logic that returns a 503 offline error for these domains when the device has an active network connection. The offline 503 error response should only be triggered for those API domains when the device is genuinely offline (navigator.onLine === false). All app-shell and static asset caching behavior should remain unchanged.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/tailwind.config.js",
-          "frontend/src/index.css",
-          "frontend/src/components/BottomNav.tsx",
-          "frontend/src/App.tsx"
+          "frontend/public/service-worker.js"
         ],
         "matchedFiles": [
-          "frontend/tailwind.config.js",
-          "frontend/src/index.css",
-          "frontend/src/components/BottomNav.tsx",
-          "frontend/src/App.tsx"
-        ]
-      },
-      {
-        "id": "REQ-10",
-        "summary": "Implement Internet Identity authentication: protect the Search tab's Open Positions section and the Preferences tab's API Key management section behind an Internet Identity login gate. Unauthenticated users can still browse the Market and AI Trade tabs freely. Show a prominent 'Connect with Internet Identity' button for gated sections. After login, the user's principal is used to associate their global learning contributions in the Motoko backend.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/components/AuthGate.tsx",
-          "frontend/src/pages/SearchTab.tsx",
-          "frontend/src/pages/PreferencesTab.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/components/AuthGate.tsx",
-          "frontend/src/pages/SearchTab.tsx",
-          "frontend/src/pages/PreferencesTab.tsx"
-        ]
-      },
-      {
-        "id": "REQ-11",
-        "summary": "Render the generated PWA icons and app logo as static assets in frontend/public/assets/generated. Use the neon circuit brain icon (512x512 and 192x192) as the PWA manifest icons and Apple touch icon, and the app wordmark/banner as the splash screen and header logo.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/public/manifest.json",
-          "frontend/index.html",
-          "frontend/src/components/AppHeader.tsx",
-          "frontend/src/App.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/public/manifest.json",
-          "frontend/index.html",
-          "frontend/src/components/AppHeader.tsx",
-          "frontend/src/App.tsx"
-        ]
-      },
-      {
-        "id": "REQ-2",
-        "summary": "Configure the PWA manifest (manifest.json) with display: standalone, short_name and name for the app, theme_color matching the dark-neon palette, and icon entries for Android, iOS, and desktop sizes (192x192, 512x512, 180x180 Apple touch icon). Register a service worker for partial offline support (cache app shell and static assets; show explicit error when live data is unavailable offline instead of serving stale data).",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/public/manifest.json",
-          "frontend/public/service-worker.js",
-          "frontend/index.html"
-        ],
-        "matchedFiles": [
-          "frontend/public/manifest.json",
-          "frontend/public/service-worker.js",
-          "frontend/index.html"
-        ]
-      },
-      {
-        "id": "REQ-3",
-        "summary": "Implement the Market tab: fetch the full list of Binance USD-M perpetual futures tickers in real-time from https://fapi.binance.com/fapi/v1/ticker/24hr directly in the browser. Display each asset with: current price, 24h price change (%), 24h volume, and a neon directional signal badge (green up arrow for positive, red down arrow for negative, orange for near-zero). Refresh data every 5 seconds. If the Binance API call fails, display an explicit error message — no silent fallback to cached/stale prices.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/pages/MarketTab.tsx",
-          "frontend/src/components/AssetRow.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/pages/MarketTab.tsx",
-          "frontend/src/components/AssetRow.tsx"
-        ]
-      },
-      {
-        "id": "REQ-4",
-        "summary": "Implement the core SMC analysis engine in TypeScript (browser-side, no external AI dependencies). The engine must process OHLCV candle data for a given symbol and detect: (1) Order Blocks — last significant bullish/bearish candle before a strong move, (2) Fair Value Gaps (FVG) — three-candle imbalance gaps, (3) Break of Structure (BOS) — price breaking a prior swing high/low in the same direction, (4) Change of Character (CHoCH) — price breaking structure in the opposite direction, (5) Liquidity zones — swing highs/lows where stop orders cluster. The engine must return structured signal objects with type, price level, direction (bullish/bearish), and confidence score (0–100) based on pattern clarity.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/lib/smc-engine.ts",
-          "frontend/src/lib/smc-types.ts"
-        ],
-        "matchedFiles": [
-          "frontend/src/lib/smc-engine.ts",
-          "frontend/src/lib/smc-types.ts"
-        ]
-      },
-      {
-        "id": "REQ-5",
-        "summary": "Implement the AI Trade tab: display SMC-based trade recommendations for a whitelist of high-liquidity assets (at minimum: BTCUSDT, ETHUSDT, SOLUSDT, BNBUSDT, XRPUSDT, ADAUSDT, AVAXUSDT, DOGEUSDT). For each asset, run the SMC engine and show: detected signals (Order Block, FVG, BOS, CHoCH, Liquidity Zone), signal direction (bullish/bearish), confidence score with a neon progress bar, and a combined recommendation label (Strong Buy / Buy / Neutral / Sell / Strong Sell). User-favorited assets (from Preferences) appear first and have their signals weighted with a bonus score. Show local learning indicator (from device storage) and global learning indicator (from Motoko backend score for that symbol).",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/pages/AITradeTab.tsx",
-          "frontend/src/components/RecommendationCard.tsx",
-          "frontend/src/hooks/useLocalLearning.ts",
-          "frontend/src/hooks/useGlobalLearning.ts"
-        ],
-        "matchedFiles": [
-          "frontend/src/pages/AITradeTab.tsx",
-          "frontend/src/components/RecommendationCard.tsx",
-          "frontend/src/hooks/useLocalLearning.ts",
-          "frontend/src/hooks/useGlobalLearning.ts"
-        ]
-      },
-      {
-        "id": "REQ-6",
-        "summary": "Implement the local learning system (device-side): store a per-symbol pattern log in localStorage tracking how many times each SMC signal type was detected and how often it preceded a significant price move (>1% within the next 3 data points). Compute a local reliability score per symbol+signal combination. Provide a reset function that clears all local learning data. This local data influences the confidence score shown in the AI Trade tab for the local indicator.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/lib/local-learning.ts"
-        ],
-        "matchedFiles": [
-          "frontend/src/lib/local-learning.ts"
-        ]
-      },
-      {
-        "id": "REQ-7",
-        "summary": "Implement the Motoko backend canister with: (1) Global pattern scoring system — store per-symbol pattern counts, signal type, occurrence count, and how many times each signal type preceded a significant move. Expose update functions to record new signal observations and query functions to retrieve global scores per symbol. (2) CoinGecko integration — fetch general market context (BTC, ETH, SOL prices in USD) from https://api.coingecko.com/api/v3/simple/price via HTTP outcalls. Expose a query endpoint that returns the cached CoinGecko prices. The global learning data must be persistent across canister upgrades (use stable variables).",
-        "status": "unknown",
-        "plannedFiles": [],
-        "matchedFiles": []
-      },
-      {
-        "id": "REQ-8",
-        "summary": "Implement the Search tab: provide a search input for any Binance USD-M perpetual pair (e.g., 'LINKUSDT'). On search, fetch live ticker data for the pair from https://fapi.binance.com/fapi/v1/ticker/24hr?symbol={PAIR} and run the full SMC engine on it, displaying the same signal breakdown as the AI Trade tab. Include a dedicated 'Open Positions' section: the user can enter their Binance API Key and Secret Key (stored only in sessionStorage/localStorage on the device, never sent to the backend). Use these credentials to call https://fapi.binance.com/fapi/v1/positionRisk with HMAC-SHA256 signature in the browser. Poll positions every 5–10 seconds. Display each open position with: symbol, side (Long/Short), entry price, mark price, unrealized P&L (with neon green/red coloring), leverage, and liquidation price. Show visual P&L alerts when P&L exceeds configurable thresholds.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/pages/SearchTab.tsx",
-          "frontend/src/lib/binance-auth.ts",
-          "frontend/src/components/PositionRow.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/pages/SearchTab.tsx",
-          "frontend/src/lib/binance-auth.ts",
-          "frontend/src/components/PositionRow.tsx"
-        ]
-      },
-      {
-        "id": "REQ-9",
-        "summary": "Implement the Preferences tab: (1) Favorite assets — allow the user to select/deselect assets from the whitelist as favorites; persist selections in localStorage. (2) Local learning reset — a clearly labeled button that clears all local SMC pattern learning data from localStorage with a confirmation dialog. (3) Binance API Key management — show fields to enter/update/clear the stored API Key and Secret Key for position monitoring. (4) Visual settings — toggle for notification alerts on significant P&L changes.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/pages/PreferencesTab.tsx",
-          "frontend/src/hooks/useFavorites.ts"
-        ],
-        "matchedFiles": [
-          "frontend/src/pages/PreferencesTab.tsx",
-          "frontend/src/hooks/useFavorites.ts"
+          "frontend/public/service-worker.js"
         ]
       }
     ]
   },
   "changedFiles": [
-    "backend/authorization/MixinAuthorization.mo",
-    "backend/authorization/access-control.mo",
-    "backend/http-outcalls/outcall.mo",
-    "backend/main.mo",
     "build-request.json",
-    "build-template/Dockerfile",
-    "build-template/LICENSE",
     "build-template/README.md",
-    "build-template/deploy.sh",
-    "build-template/icp.yaml",
-    "build-template/package.json",
-    "build-template/pnpm-lock.yaml",
-    "build-template/pnpm-workspace.yaml",
-    "build-template/scripts/prune-unused-images.js",
-    "build-template/scripts/resize-images.js",
-    "build-template/src/backend/canister.yaml",
-    "build-template/src/backend/system-idl/aaaaa-aa.did",
-    "build-template/src/frontend/canister.yaml",
-    "build-template/src/frontend/components.json",
-    "build-template/src/frontend/env.json",
-    "build-template/src/frontend/eslint-rules/no-bigint-in-query-keys.js",
-    "build-template/src/frontend/eslint-rules/require-internet-identity-provider.js",
-    "build-template/src/frontend/eslint.config.js",
-    "build-template/src/frontend/package.json",
-    "build-template/src/frontend/postcss.config.js",
-    "build-template/src/frontend/src/components/ui/accordion.tsx",
-    "build-template/src/frontend/src/components/ui/alert-dialog.tsx",
-    "build-template/src/frontend/src/components/ui/alert.tsx",
-    "build-template/src/frontend/src/components/ui/aspect-ratio.tsx",
-    "build-template/src/frontend/src/components/ui/avatar.tsx",
-    "build-template/src/frontend/src/components/ui/badge.tsx",
-    "build-template/src/frontend/src/components/ui/breadcrumb.tsx",
-    "build-template/src/frontend/src/components/ui/button.tsx",
-    "build-template/src/frontend/src/components/ui/calendar.tsx",
-    "build-template/src/frontend/src/components/ui/card.tsx",
-    "build-template/src/frontend/src/components/ui/carousel.tsx",
-    "build-template/src/frontend/src/components/ui/chart.tsx",
-    "build-template/src/frontend/src/components/ui/checkbox.tsx",
-    "build-template/src/frontend/src/components/ui/collapsible.tsx",
-    "build-template/src/frontend/src/components/ui/command.tsx",
-    "build-template/src/frontend/src/components/ui/context-menu.tsx",
-    "build-template/src/frontend/src/components/ui/dialog.tsx",
-    "build-template/src/frontend/src/components/ui/drawer.tsx",
-    "build-template/src/frontend/src/components/ui/dropdown-menu.tsx",
-    "build-template/src/frontend/src/components/ui/form.tsx",
-    "build-template/src/frontend/src/components/ui/hover-card.tsx",
-    "build-template/src/frontend/src/components/ui/input-otp.tsx",
-    "build-template/src/frontend/src/components/ui/input.tsx",
-    "build-template/src/frontend/src/components/ui/label.tsx",
-    "build-template/src/frontend/src/components/ui/menubar.tsx",
-    "build-template/src/frontend/src/components/ui/navigation-menu.tsx",
-    "build-template/src/frontend/src/components/ui/pagination.tsx",
-    "build-template/src/frontend/src/components/ui/popover.tsx",
-    "build-template/src/frontend/src/components/ui/progress.tsx",
-    "build-template/src/frontend/src/components/ui/radio-group.tsx",
-    "build-template/src/frontend/src/components/ui/resizable.tsx",
-    "build-template/src/frontend/src/components/ui/scroll-area.tsx",
-    "build-template/src/frontend/src/components/ui/select.tsx",
-    "build-template/src/frontend/src/components/ui/separator.tsx",
-    "build-template/src/frontend/src/components/ui/sheet.tsx",
-    "build-template/src/frontend/src/components/ui/sidebar.tsx",
-    "build-template/src/frontend/src/components/ui/skeleton.tsx",
-    "build-template/src/frontend/src/components/ui/slider.tsx",
-    "build-template/src/frontend/src/components/ui/sonner.tsx",
-    "build-template/src/frontend/src/components/ui/switch.tsx",
-    "build-template/src/frontend/src/components/ui/table.tsx",
-    "build-template/src/frontend/src/components/ui/tabs.tsx",
-    "build-template/src/frontend/src/components/ui/textarea.tsx",
-    "build-template/src/frontend/src/components/ui/toggle-group.tsx",
-    "build-template/src/frontend/src/components/ui/toggle.tsx",
-    "build-template/src/frontend/src/components/ui/tooltip.tsx",
-    "build-template/src/frontend/src/hooks/use-mobile.tsx",
-    "build-template/src/frontend/src/lib/utils.ts",
-    "build-template/src/frontend/tsconfig.json",
-    "build-template/src/frontend/vite.config.js",
-    "build-template/tsconfig.json",
-    "caffeine.lock.json",
     "feature_evidence.json",
+    "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
-    "frontend/index.css",
-    "frontend/index.html",
-    "frontend/public/assets/generated/app-icon-180.dim_180x180.png",
-    "frontend/public/assets/generated/app-icon-192.dim_192x192.png",
-    "frontend/public/assets/generated/app-icon.dim_512x512.png",
-    "frontend/public/assets/generated/app-wordmark.dim_600x120.png",
-    "frontend/public/manifest.json",
     "frontend/public/service-worker.js",
-    "frontend/src/App.tsx",
-    "frontend/src/backend.d.ts",
-    "frontend/src/backend.ts",
-    "frontend/src/components/AppHeader.tsx",
-    "frontend/src/components/AssetRow.tsx",
-    "frontend/src/components/AuthGate.tsx",
-    "frontend/src/components/BottomNav.tsx",
-    "frontend/src/components/ErrorBanner.tsx",
-    "frontend/src/components/PositionRow.tsx",
-    "frontend/src/components/RecommendationCard.tsx",
-    "frontend/src/components/SignalBadge.tsx",
-    "frontend/src/config.ts",
-    "frontend/src/declarations/backend.did.d.ts",
-    "frontend/src/declarations/backend.did.js",
-    "frontend/src/hooks/useActor.ts",
-    "frontend/src/hooks/useFavorites.ts",
-    "frontend/src/hooks/useGlobalLearning.ts",
-    "frontend/src/hooks/useInternetIdentity.ts",
-    "frontend/src/hooks/useLocalLearning.ts",
-    "frontend/src/hooks/useQueries.ts",
-    "frontend/src/index.css",
-    "frontend/src/lib/binance-auth.ts",
-    "frontend/src/lib/local-learning.ts",
-    "frontend/src/lib/smc-engine.ts",
-    "frontend/src/lib/smc-types.ts",
-    "frontend/src/main.tsx",
-    "frontend/src/pages/AITradeTab.tsx",
-    "frontend/src/pages/MarketTab.tsx",
-    "frontend/src/pages/PreferencesTab.tsx",
-    "frontend/src/pages/SearchTab.tsx",
-    "frontend/src/ui-summary.json",
-    "frontend/src/utils/StorageClient.ts",
-    "frontend/src/utils/urlParams.ts",
-    "frontend/tailwind.config.js",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

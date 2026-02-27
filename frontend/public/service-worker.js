@@ -9,7 +9,13 @@ const APP_SHELL = [
   '/assets/generated/app-wordmark.dim_600x120.png',
 ];
 
-const API_DOMAINS = ['fapi.binance.com', 'api.coingecko.com', 'icp0.io', 'ic0.app'];
+const API_DOMAINS = [
+  'fapi.binance.com',
+  'api.binance.com',
+  'api.coingecko.com',
+  'icp0.io',
+  'ic0.app',
+];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -34,24 +40,28 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // Never cache API calls — fail explicitly when offline
+  // For external API calls, always pass through to the network when online.
+  // Only return a 503 offline error when the device is genuinely offline.
   const isApiCall = API_DOMAINS.some((d) => url.hostname.includes(d));
   if (isApiCall) {
+    // If the device is online, do NOT intercept — let the browser handle it natively.
+    if (navigator.onLine) {
+      return; // bypass service worker entirely
+    }
+    // Device is offline: return an explicit 503 error instead of a network failure.
     event.respondWith(
-      fetch(event.request).catch(() => {
-        return new Response(
-          JSON.stringify({ error: 'No live data available offline. Please check your connection.' }),
-          {
-            status: 503,
-            headers: { 'Content-Type': 'application/json' },
-          }
-        );
-      })
+      new Response(
+        JSON.stringify({ error: 'No live data available offline. Please check your connection.' }),
+        {
+          status: 503,
+          headers: { 'Content-Type': 'application/json' },
+        }
+      )
     );
     return;
   }
 
-  // For app shell: cache-first strategy
+  // For app shell assets: cache-first strategy
   event.respondWith(
     caches.match(event.request).then((cached) => {
       if (cached) return cached;
