@@ -1,16 +1,16 @@
 {
   "schemaVersion": "1.0.0",
-  "projectStateVersion": 5,
-  "summary": "Professional crypto market assistant PWA (mobile-first, dark-neon theme) focused on Binance USD-M perpetual futures. Frontend: React + TypeScript + Vite with pure TypeScript SMC algorithms (Order Blocks, FVG, BOS/CHoCH) and direct Binance API calls from browser. Backend: Motoko canister on ICP for CoinGecko integration and global pattern scoring system. Authentication: Internet Identity for app access + Binance API Key/Secret stored only on device (never sent to backend). 4 main areas: Market, AI Trade, Search, Preferences. PWA installable with service worker.",
+  "projectStateVersion": 11,
+  "summary": "Professional crypto market assistant PWA (mobile-first, dark-neon theme) focused on Binance USD-M perpetual futures. Frontend: React + TypeScript + Vite with pure TypeScript SMC algorithms (Order Blocks, FVG, BOS/CHoCH) and direct Binance API calls from browser. Backend: Motoko canister on ICP for CoinGecko integration and global pattern scoring system. Authentication: Internet Identity for app access. Open Positions in Search tab calls Binance fapi/v2/positionRisk directly from browser with HMAC-SHA256 signing (reverted from canister proxy approach due to 'Failed to fetch' errors). 4 main areas: Market, AI Trade, Search, Preferences. PWA installable with service worker.",
   "architectural_notes": [
     "All Binance API access is exclusively from the frontend browser (fapi.binance.com). Backend ICP canister is blocked by Binance IP/region restrictions.",
-    "Binance API Key + Secret stored only in device localStorage/sessionStorage, never sent to backend canister.",
     "Dual independent authentication: Internet Identity for app access, Binance API Key for fetching open positions.",
     "SMC algorithms (Order Blocks, FVG, BOS/CHoCH) are pure TypeScript math/logic in the browser — no external ML models.",
     "Global learning in Motoko is a pattern scoring/counting system (not real ML): tracks which signals preceded significant moves, frequency and reliability rules.",
     "No simulated data or silent cache — if a data source fails, show explicit error. No fallback to stale data presented as real.",
     "Binance endpoints used: fapi.binance.com/fapi/v1/ticker/24hr (market data), fapi.binance.com/fapi/v1/positionRisk (positions, requires API Key), api.binance.com/api/v3/trades (trade history). CoinGecko used in backend.",
-    "Service worker must NOT intercept requests to external domains (fapi.binance.com, api.binance.com, api.coingecko.com) — these must always go directly to the network. Offline error should only appear when the device truly has no connection."
+    "Service worker must NOT intercept requests to external domains (fapi.binance.com, api.binance.com, api.coingecko.com) — these must always go directly to the network. Offline error should only appear when the device truly has no connection.",
+    "Open Positions (Search tab) calls fapi.binance.com/fapi/v2/positionRisk directly from the browser with HMAC-SHA256 signing — the Motoko canister proxy approach was reverted due to 'Failed to fetch' errors. API Key/Secret remain stored only in localStorage/sessionStorage on the device."
   ],
   "known_issues": [
     "Search tab shows 'Binance API error 503: No live data available offline' — service worker incorrectly intercepts Binance API calls and returns offline error instead of passing them through to the network."
@@ -104,6 +104,22 @@
         "REQ-12"
       ],
       "version": 1
+    },
+    {
+      "id": "feature-update-the-search-tab-s-open-positions-section-to-call-the-motoko-backend-getpositionrisk-function-via-the-authenticated-actor-instead-of-calling-binance-directly-from-the-browser-pass-the-stored-api-key-and-secret-key-from-localstorage-to-the-canister-call-parse-the-json-response-returned-by-the-canister-and-render-all-positions-using-the-existing-positionrow-component-maintain-the-existing-polling-interval-5-10-seconds-continue-to-require-internet-identity-authentication-to-access-this-section",
+      "title": "Update the Search tab's Open Positions section to call the Motoko backend `getPositionRisk` function (via the authenticated actor) instead of calling Binance directly from the browser. Pass the stored API Key and Secret Key from localStorage to the canister call. Parse the JSON response returned by the canister and render all positions using the existing `PositionRow` component. Maintain the existing polling interval (5–10 seconds). Continue to require Internet Identity authentication to access this section.",
+      "reqIds": [
+        "REQ-14"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-the-search-tab-s-open-positions-section-to-call-the-binance-futures-api-endpoint-https-fapi-binance-com-fapi-v2-positionrisk-directly-from-the-browser-using-hmac-sha256-signing-via-the-existing-binance-auth-ts-utilities-instead-of-routing-through-the-motoko-canister-getpositionrisk-function-the-api-key-and-secret-key-must-continue-to-be-read-from-localstorage-sessionstorage-only-and-never-sent-to-the-backend-maintain-the-existing-polling-interval-of-5-10-seconds-continue-to-require-internet-identity-authentication-to-access-this-section-render-results-using-the-existing-positionrow-component",
+      "title": "Update the Search tab's Open Positions section to call the Binance Futures API endpoint `https://fapi.binance.com/fapi/v2/positionRisk` directly from the browser using HMAC-SHA256 signing (via the existing `binance-auth.ts` utilities), instead of routing through the Motoko canister `getPositionRisk` function. The API Key and Secret Key must continue to be read from localStorage/sessionStorage only and never sent to the backend. Maintain the existing polling interval of 5–10 seconds. Continue to require Internet Identity authentication to access this section. Render results using the existing `PositionRow` component.",
+      "reqIds": [
+        "REQ-15"
+      ],
+      "version": 1
     }
   ],
   "new_feature_requests": [
@@ -160,6 +176,14 @@
       "summary": "Implement the Motoko backend canister with: (1) Global pattern scoring system — store per-symbol pattern counts, signal type, occurrence count, and how many times each signal type preceded a significant move. Expose update functions to record new signal observations and query functions to retrieve global scores per symbol. (2) CoinGecko integration — fetch general market context (BTC, ETH, SOL prices in USD) from https://api.coingecko.com/api/v3/simple/price via HTTP outcalls. Expose a query endpoint that returns the cached CoinGecko prices. The global learning data must be persistent across canister upgrades (use stable variables).",
       "reqIds": [
         "REQ-7"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-16",
+      "summary": "In `frontend/src/lib/binance-auth.ts` and `frontend/src/hooks/useQueries.ts`, update every reference to the Binance position risk endpoint from `https://fapi.binance.com/fapi/v1/positionRisk` to `https://fapi.binance.com/fapi/v2/positionRisk`. Ensure the HMAC-SHA256 signing logic and all other request parameters remain unchanged.",
+      "reqIds": [
+        "REQ-16"
       ],
       "status": "pending"
     }

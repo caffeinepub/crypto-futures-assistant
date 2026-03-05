@@ -1,5 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useActor } from './useActor';
+import { fetchSignedBinance } from '../lib/binance-auth';
+import type { BinancePosition } from '../lib/binance-auth';
 
 export interface BinanceTicker {
   symbol: string;
@@ -92,5 +94,35 @@ export function useCoinGeckoPrices() {
     enabled: !!actor && !isFetching,
     staleTime: 60_000,
     refetchInterval: 120_000,
+  });
+}
+
+/**
+ * Fetches open position risk directly from Binance Futures API in the browser
+ * using HMAC-SHA256 signing. No canister proxy involved.
+ * Credentials are read exclusively from localStorage and never sent to the backend.
+ */
+export function usePositionRisk(
+  apiKey: string | null,
+  apiSecret: string | null,
+  enabled: boolean
+) {
+  return useQuery<BinancePosition[]>({
+    queryKey: ['positionRisk', apiKey],
+    queryFn: async () => {
+      if (!apiKey || !apiSecret) return [];
+
+      const positions = await fetchSignedBinance<BinancePosition[]>(
+        '/fapi/v2/positionRisk',
+        { apiKey, secretKey: apiSecret }
+      );
+
+      // Filter only positions with non-zero amount
+      return positions.filter(p => parseFloat(p.positionAmt) !== 0);
+    },
+    enabled: enabled && !!apiKey && !!apiSecret,
+    refetchInterval: 7000,
+    staleTime: 6000,
+    retry: 1,
   });
 }

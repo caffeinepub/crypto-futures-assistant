@@ -1,25 +1,4 @@
 {
   "kind": "feature_evidence_report",
-  "features": [
-    {
-      "featureId": "feature-fix-the-service-worker-in-frontend-public-service-worker-js-so-that-requests-to-external-api-domains-fapi-binance-com-api-binance-com-api-coingecko-com-and-any-icp-ic-endpoints-are-never-intercepted-or-cached-they-must-always-pass-through-directly-to-the-network-remove-any-fetch-event-handler-logic-that-returns-a-503-offline-error-for-these-domains-when-the-device-has-an-active-network-connection-the-offline-503-error-response-should-only-be-triggered-for-those-api-domains-when-the-device-is-genuinely-offline-navigator-online-false-all-app-shell-and-static-asset-caching-behavior-should-remain-unchanged",
-      "featureTitle": "Fix the service worker in frontend/public/service-worker.js so that requests to external API domains (fapi.binance.com, api.binance.com, api.coingecko.com, and any ICP/IC endpoints) are NEVER intercepted or cached — they must always pass through directly to the network. Remove any fetch event handler logic that returns a 503 offline error for these domains when the device has an active network connection. The offline 503 error response should only be triggered for those API domains when the device is genuinely offline (navigator.onLine === false). All app-shell and static asset caching behavior should remain unchanged.",
-      "files": [
-        "frontend/public/service-worker.js"
-      ],
-      "components": [
-        "authorization@4.0.0",
-        "http-outcalls@3.0.0",
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0"
-      ],
-      "testIds": [
-        "REQ-12"
-      ],
-      "confidence": "high"
-    }
-  ]
+  "features": []
 }

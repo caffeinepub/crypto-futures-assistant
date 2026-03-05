@@ -89,21 +89,20 @@ export class ExternalBlob {
         return this;
     }
 }
-export interface TransformationOutput {
-    status: bigint;
-    body: Uint8Array;
-    headers: Array<http_header>;
-}
 export interface TransformationInput {
     context: Uint8Array;
     response: http_request_result;
 }
-export type SignalType = string;
 export interface PatternEntry {
     occurrenceCount: bigint;
     symbol: string;
-    signalType: SignalType;
+    signalType: string;
     precedingMoveCount: bigint;
+}
+export interface TransformationOutput {
+    status: bigint;
+    body: Uint8Array;
+    headers: Array<http_header>;
 }
 export interface http_header {
     value: string;
@@ -129,7 +128,7 @@ export interface backendInterface {
     getCoinGeckoPrices(): Promise<string>;
     getPatternScores(symbol: string): Promise<Array<PatternEntry>>;
     isCallerAdmin(): Promise<boolean>;
-    recordSignalObservation(symbol: string, signalType: SignalType, precededSignificantMove: boolean): Promise<void>;
+    recordSignalObservation(symbol: string, signalType: string, precededSignificantMove: boolean): Promise<void>;
     transform(input: TransformationInput): Promise<TransformationOutput>;
 }
 import type { UserRole as _UserRole } from "./declarations/backend.did.d.ts";
@@ -261,7 +260,7 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async recordSignalObservation(arg0: string, arg1: SignalType, arg2: boolean): Promise<void> {
+    async recordSignalObservation(arg0: string, arg1: string, arg2: boolean): Promise<void> {
         if (this.processError) {
             try {
                 const result = await this.actor.recordSignalObservation(arg0, arg1, arg2);

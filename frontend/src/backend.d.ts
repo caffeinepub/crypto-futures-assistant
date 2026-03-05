@@ -7,21 +7,20 @@ export interface None {
     __kind__: "None";
 }
 export type Option<T> = Some<T> | None;
-export interface TransformationOutput {
-    status: bigint;
-    body: Uint8Array;
-    headers: Array<http_header>;
-}
 export interface TransformationInput {
     context: Uint8Array;
     response: http_request_result;
 }
-export type SignalType = string;
 export interface PatternEntry {
     occurrenceCount: bigint;
     symbol: string;
-    signalType: SignalType;
+    signalType: string;
     precedingMoveCount: bigint;
+}
+export interface TransformationOutput {
+    status: bigint;
+    body: Uint8Array;
+    headers: Array<http_header>;
 }
 export interface http_header {
     value: string;
@@ -46,6 +45,6 @@ export interface backendInterface {
     getCoinGeckoPrices(): Promise<string>;
     getPatternScores(symbol: string): Promise<Array<PatternEntry>>;
     isCallerAdmin(): Promise<boolean>;
-    recordSignalObservation(symbol: string, signalType: SignalType, precededSignificantMove: boolean): Promise<void>;
+    recordSignalObservation(symbol: string, signalType: string, precededSignificantMove: boolean): Promise<void>;
     transform(input: TransformationInput): Promise<TransformationOutput>;
 }

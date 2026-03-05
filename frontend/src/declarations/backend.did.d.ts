@@ -13,10 +13,9 @@ import type { Principal } from '@icp-sdk/core/principal';
 export interface PatternEntry {
   'occurrenceCount' : bigint,
   'symbol' : string,
-  'signalType' : SignalType,
+  'signalType' : string,
   'precedingMoveCount' : bigint,
 }
-export type SignalType = string;
 export interface TransformationInput {
   'context' : Uint8Array,
   'response' : http_request_result,
@@ -45,10 +44,7 @@ export interface _SERVICE {
   'getCoinGeckoPrices' : ActorMethod<[], string>,
   'getPatternScores' : ActorMethod<[string], Array<PatternEntry>>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
-  'recordSignalObservation' : ActorMethod<
-    [string, SignalType, boolean],
-    undefined
-  >,
+  'recordSignalObservation' : ActorMethod<[string, string, boolean], undefined>,
   'transform' : ActorMethod<[TransformationInput], TransformationOutput>,
 }
 export declare const idlService: IDL.ServiceClass;

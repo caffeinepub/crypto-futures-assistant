@@ -1,43 +1,37 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Search, Loader2, RefreshCw, Key, Eye, EyeOff, Wifi, WifiOff } from 'lucide-react';
-import { useTickerForSymbol, useKlines } from '../hooks/useQueries';
+import React, { useState, useMemo, useEffect } from 'react';
+import { Search, Loader2, Key, Eye, EyeOff, Wifi } from 'lucide-react';
+import { useTickerForSymbol, useKlines, usePositionRisk } from '../hooks/useQueries';
 import { useFavorites } from '../hooks/useFavorites';
 import { useLocalLearning } from '../hooks/useLocalLearning';
 import { useGlobalScoreForSymbol } from '../hooks/useGlobalLearning';
 import { runSMCAnalysis, computeOverallScore, scoreToRecommendation } from '../lib/smc-engine';
 import type { OHLCVCandle, AssetAnalysis } from '../lib/smc-types';
 import {
-  fetchOpenPositions,
   getStoredCredentials,
   storeCredentials,
   clearCredentials,
-  type BinancePosition,
 } from '../lib/binance-auth';
+import type { BinancePosition } from '../lib/binance-auth';
 import RecommendationCard from '../components/RecommendationCard';
 import PositionRow from '../components/PositionRow';
 import AuthGate from '../components/AuthGate';
 import ErrorBanner from '../components/ErrorBanner';
 import { useInternetIdentity } from '../hooks/useInternetIdentity';
 import { useGlobalPatternScores } from '../hooks/useGlobalLearning';
+import { useQueryClient } from '@tanstack/react-query';
 
 export default function SearchTab() {
   const [searchInput, setSearchInput] = useState('');
   const [activeSymbol, setActiveSymbol] = useState('');
   const { identity } = useInternetIdentity();
   const isAuthenticated = !!identity;
+  const queryClient = useQueryClient();
 
   // Credentials state
   const [apiKey, setApiKey] = useState('');
   const [secretKey, setSecretKey] = useState('');
   const [showSecret, setShowSecret] = useState(false);
   const [credsSaved, setCredsSaved] = useState(false);
-
-  // Positions state
-  const [positions, setPositions] = useState<BinancePosition[]>([]);
-  const [positionsLoading, setPositionsLoading] = useState(false);
-  const [positionsError, setPositionsError] = useState<string | null>(null);
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const { isFavorite } = useFavorites();
   const { getLocalScore } = useLocalLearning();
@@ -55,6 +49,25 @@ export default function SearchTab() {
 
   const { data: ticker, isLoading: tickerLoading, error: tickerError } = useTickerForSymbol(activeSymbol);
   const { data: klines, isLoading: klinesLoading } = useKlines(activeSymbol, '1h', 100);
+
+  // Fetch positions directly from Binance in the browser (no canister proxy)
+  const positionsEnabled = credsSaved && isAuthenticated;
+  const {
+    data: positionsData,
+    isLoading: positionsLoading,
+    error: positionsError,
+    dataUpdatedAt,
+    refetch: refetchPositions,
+  } = usePositionRisk(
+    credsSaved ? apiKey : null,
+    credsSaved ? secretKey : null,
+    positionsEnabled
+  );
+
+  // Explicitly typed to avoid TypeScript narrowing to `never`
+  const positions: BinancePosition[] = positionsData ?? [];
+
+  const lastUpdated = dataUpdatedAt ? new Date(dataUpdatedAt) : null;
 
   const analysis = useMemo<AssetAnalysis | null>(() => {
     if (!klines || klines.length < 10 || !activeSymbol) return null;
@@ -95,46 +108,9 @@ export default function SearchTab() {
     setApiKey('');
     setSecretKey('');
     setCredsSaved(false);
-    setPositions([]);
-    stopPolling();
+    // Invalidate position risk cache
+    queryClient.removeQueries({ queryKey: ['positionRisk'] });
   };
-
-  const fetchPositions = async () => {
-    const creds = getStoredCredentials();
-    if (!creds) return;
-    setPositionsLoading(true);
-    setPositionsError(null);
-    try {
-      const data = await fetchOpenPositions(creds);
-      setPositions(data);
-      setLastUpdated(new Date());
-    } catch (err) {
-      setPositionsError(err instanceof Error ? err.message : 'Failed to fetch positions');
-    } finally {
-      setPositionsLoading(false);
-    }
-  };
-
-  const startPolling = () => {
-    fetchPositions();
-    pollingRef.current = setInterval(fetchPositions, 7000);
-  };
-
-  const stopPolling = () => {
-    if (pollingRef.current) {
-      clearInterval(pollingRef.current);
-      pollingRef.current = null;
-    }
-  };
-
-  useEffect(() => {
-    if (credsSaved && isAuthenticated) {
-      startPolling();
-    } else {
-      stopPolling();
-    }
-    return () => stopPolling();
-  }, [credsSaved, isAuthenticated]);
 
   const formatPrice = (price: string) => {
     const n = parseFloat(price);
@@ -142,6 +118,12 @@ export default function SearchTab() {
     if (n >= 1) return n.toFixed(4);
     return n.toFixed(6);
   };
+
+  const positionsErrorMessage = positionsError instanceof Error
+    ? positionsError.message
+    : positionsError
+      ? 'Failed to fetch positions'
+      : null;
 
   return (
     <div className="flex flex-col h-full overflow-y-auto">
@@ -237,7 +219,7 @@ export default function SearchTab() {
                 ) : (
                   <Wifi size={10} className="text-neon-green" />
                 )}
-                {lastUpdated && (
+                {lastUpdated && dataUpdatedAt > 0 && (
                   <span className="text-[9px] text-muted-foreground">
                     {lastUpdated.toLocaleTimeString()}
                   </span>
@@ -256,7 +238,7 @@ export default function SearchTab() {
                     <span>Binance API Credentials</span>
                   </div>
                   <div className="text-[11px] text-muted-foreground">
-                    Credentials are stored only on your device and never sent to any server.
+                    Credentials are stored only on your device and used to sign requests directly in the browser. They are never sent to any server or canister.
                   </div>
                   <div className="space-y-2">
                     <input
@@ -284,47 +266,57 @@ export default function SearchTab() {
                     <button
                       onClick={handleSaveCredentials}
                       disabled={!apiKey.trim() || !secretKey.trim()}
-                      className="w-full py-2 rounded-lg bg-neon-blue/20 border border-neon-blue/40 text-neon-blue text-sm font-semibold hover:bg-neon-blue/30 transition-colors disabled:opacity-40"
+                      className="w-full py-2 rounded-lg bg-neon-blue/20 border border-neon-blue/40 text-neon-blue text-sm font-semibold hover:bg-neon-blue/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                     >
-                      Save & Connect
+                      Save Credentials
                     </button>
                   </div>
                 </div>
               ) : (
-                <div className="flex items-center justify-between px-3 py-2 rounded-lg border border-neon-green/30 bg-neon-green/5">
-                  <div className="flex items-center gap-2 text-xs text-neon-green">
-                    <Wifi size={12} />
-                    <span>API Connected • Polling every 7s</span>
-                  </div>
-                  <button
-                    onClick={handleClearCredentials}
-                    className="text-[10px] text-neon-red/70 hover:text-neon-red border border-neon-red/30 px-2 py-0.5 rounded"
-                  >
-                    Disconnect
-                  </button>
-                </div>
-              )}
+                <div className="space-y-2">
+                  {positionsErrorMessage && (
+                    <ErrorBanner message={positionsErrorMessage} />
+                  )}
 
-              {/* Positions Error */}
-              {positionsError && (
-                <ErrorBanner
-                  message={positionsError}
-                  onRetry={fetchPositions}
-                />
-              )}
-
-              {/* Positions List */}
-              {credsSaved && !positionsError && (
-                <>
-                  {positions.length === 0 && !positionsLoading && (
-                    <div className="text-center py-6 text-muted-foreground text-sm">
-                      No open positions found
+                  {positionsLoading && positions.length === 0 && (
+                    <div className="flex items-center gap-2 text-neon-green text-sm py-3">
+                      <Loader2 size={14} className="animate-spin" />
+                      <span>Loading positions...</span>
                     </div>
                   )}
-                  {positions.map(pos => (
-                    <PositionRow key={`${pos.symbol}-${pos.positionSide}`} position={pos} />
-                  ))}
-                </>
+
+                  {!positionsLoading && !positionsErrorMessage && positions.length === 0 && (
+                    <div className="rounded-xl border border-white/10 bg-surface p-4 text-center">
+                      <div className="text-sm text-muted-foreground">No open positions</div>
+                      <div className="text-[11px] text-muted-foreground/60 mt-1">
+                        Your Binance Futures positions will appear here
+                      </div>
+                    </div>
+                  )}
+
+                  {positions.length > 0 && (
+                    <div className="space-y-2">
+                      {positions.map((pos, i) => (
+                        <PositionRow key={`${pos.symbol}-${pos.positionSide}-${i}`} position={pos} />
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-between pt-1">
+                    <button
+                      onClick={() => refetchPositions()}
+                      className="text-[11px] text-neon-green/70 hover:text-neon-green transition-colors"
+                    >
+                      Refresh now
+                    </button>
+                    <button
+                      onClick={handleClearCredentials}
+                      className="text-[11px] text-muted-foreground hover:text-neon-red transition-colors"
+                    >
+                      Clear credentials
+                    </button>
+                  </div>
+                </div>
               )}
             </div>
           </AuthGate>

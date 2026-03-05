@@ -1,23 +1,27 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Fix service worker incorrectly intercepting Binance API calls in Search tab",
+  "title": "Fix Open Positions endpoint to use fapi/v2/positionRisk",
   "requirements": [
     {
-      "id": "REQ-12",
-      "summary": "Fix service worker fetch handler to never intercept or cache external API requests (fapi.binance.com, api.binance.com, api.coingecko.com, ICP endpoints) when the device is online, allowing them to pass through directly to the network. Only return the explicit 503 offline error when the device is genuinely offline (navigator.onLine === false). Preserve all existing app-shell and static asset caching behavior.",
+      "id": "REQ-16",
+      "summary": "Update Binance position risk endpoint from v1 to v2 in frontend code",
       "acceptanceCriteria": [
-        "Opening the Search tab and searching for any Binance USD-M perpetual pair (e.g., BTCUSDT) successfully fetches live ticker and kline data without returning a 503 error while the device is online.",
-        "The service worker fetch handler for fapi.binance.com, api.binance.com, and api.coingecko.com always calls fetch(event.request) and passes the response through directly when the device is online.",
-        "When the device is genuinely offline (no network), the service worker correctly returns the explicit 503 JSON error for API domain requests instead of a network failure.",
-        "App shell and static assets (HTML, JS, CSS, icons) continue to be served from the service worker cache for offline support.",
-        "No regression on Market tab real-time ticker polling (every 5 seconds) or AI Trade tab kline fetching."
+        "No code in the frontend references the v1 positionRisk endpoint (`fapi/v1/positionRisk`)",
+        "All position risk fetch calls use `https://fapi.binance.com/fapi/v2/positionRisk`",
+        "HMAC-SHA256 signing, polling interval (5–10 seconds), and credential handling from localStorage remain unchanged",
+        "Open Positions section in the Search tab successfully returns and renders live position data from the v2 endpoint"
       ],
       "file_operations": [
         {
-          "path": "frontend/public/service-worker.js",
+          "path": "frontend/src/lib/binance-auth.ts",
           "operation": "modify",
-          "description": "Modify the fetch event handler to skip interception for all external API domains (fapi.binance.com, api.binance.com, api.coingecko.com, and ICP/IC endpoints) when the device is online. Update the logic so these API requests bypass the service worker entirely via immediate fetch(event.request) and only return the 503 JSON offline error when navigator.onLine === false. Preserve the existing app-shell caching strategy (cache-first for HTML/JS/CSS/icons) to maintain offline PWA functionality. Ensure the logic distinguishes between app assets (which use the cache) and API endpoints (which must always be live when online)."
+          "description": "Update the fetchOpenPositions function to use the v2 positionRisk endpoint URL `https://fapi.binance.com/fapi/v2/positionRisk` instead of v1. Keep all HMAC-SHA256 signing logic, timestamp generation, query string construction, and error handling exactly as-is."
+        },
+        {
+          "path": "frontend/src/hooks/useQueries.ts",
+          "operation": "modify",
+          "description": "Update the usePositionRisk query hook to reference the v2 positionRisk endpoint URL `https://fapi.binance.com/fapi/v2/positionRisk` in any fetch calls or comments. Preserve the existing polling interval (5–10 seconds), HMAC signing, credential retrieval from localStorage, and query configuration."
         }
       ]
     }

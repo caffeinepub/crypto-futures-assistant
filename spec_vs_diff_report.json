@@ -1,14 +1,23 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-27T00:26:04.443Z",
-  "summary": "The diff modifies frontend/public/service-worker.js to implement the required network-passthrough logic for external API domains. When the device is online (navigator.onLine === true), the service worker returns early without intercepting API calls. When offline, it returns a 503 JSON error. App-shell caching logic remains unchanged. All REQ-12 acceptance criteria appear to be addressed by the implementation.",
-  "missing_requirements": [],
+  "generatedAt": "2026-02-27T04:23:36.523Z",
+  "summary": "The diff only modifies `project_state.json`, a metadata/state tracking file. The actual source files required by REQ-16 — `frontend/src/lib/binance-auth.ts` and `frontend/src/hooks/useQueries.ts` — are not present in the diff at all. While the project_state.json summary text mentions 'fapi/v2/positionRisk', the actual code changes to the frontend source files have not been made (or are not reflected in the diff).",
+  "missing_requirements": [
+    {
+      "id": "REQ-16",
+      "requirement": "Update every reference to the Binance position risk endpoint from https://fapi.binance.com/fapi/v1/positionRisk to https://fapi.binance.com/fapi/v2/positionRisk in frontend/src/lib/binance-auth.ts and frontend/src/hooks/useQueries.ts.",
+      "reason": "Neither frontend/src/lib/binance-auth.ts nor frontend/src/hooks/useQueries.ts appear in the diff. Only project_state.json was modified. The actual source code changes required to switch the endpoint URL have not been applied.",
+      "evidence": [
+        "frontend/src/lib/binance-auth.ts",
+        "frontend/src/hooks/useQueries.ts",
+        "project_state.json"
+      ]
+    }
+  ],
   "hallucinated_features": [],
-  "confidence": 0.93,
+  "confidence": 0.92,
   "changed_files": [
-    "frontend-file-summaries.txt",
-    "frontend/public/service-worker.js",
     "project_state.json"
   ]
 }

@@ -13,11 +13,10 @@ export const UserRole = IDL.Variant({
   'user' : IDL.Null,
   'guest' : IDL.Null,
 });
-export const SignalType = IDL.Text;
 export const PatternEntry = IDL.Record({
   'occurrenceCount' : IDL.Nat,
   'symbol' : IDL.Text,
-  'signalType' : SignalType,
+  'signalType' : IDL.Text,
   'precedingMoveCount' : IDL.Nat,
 });
 export const http_header = IDL.Record({
@@ -49,11 +48,7 @@ export const idlService = IDL.Service({
   'getCoinGeckoPrices' : IDL.Func([], [IDL.Text], ['query']),
   'getPatternScores' : IDL.Func([IDL.Text], [IDL.Vec(PatternEntry)], ['query']),
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
-  'recordSignalObservation' : IDL.Func(
-      [IDL.Text, SignalType, IDL.Bool],
-      [],
-      [],
-    ),
+  'recordSignalObservation' : IDL.Func([IDL.Text, IDL.Text, IDL.Bool], [], []),
   'transform' : IDL.Func(
       [TransformationInput],
       [TransformationOutput],
@@ -69,11 +64,10 @@ export const idlFactory = ({ IDL }) => {
     'user' : IDL.Null,
     'guest' : IDL.Null,
   });
-  const SignalType = IDL.Text;
   const PatternEntry = IDL.Record({
     'occurrenceCount' : IDL.Nat,
     'symbol' : IDL.Text,
-    'signalType' : SignalType,
+    'signalType' : IDL.Text,
     'precedingMoveCount' : IDL.Nat,
   });
   const http_header = IDL.Record({ 'value' : IDL.Text, 'name' : IDL.Text });
@@ -107,7 +101,7 @@ export const idlFactory = ({ IDL }) => {
       ),
     'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
     'recordSignalObservation' : IDL.Func(
-        [IDL.Text, SignalType, IDL.Bool],
+        [IDL.Text, IDL.Text, IDL.Bool],
         [],
         [],
       ),

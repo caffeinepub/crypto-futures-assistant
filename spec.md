@@ -1,11 +1,11 @@
 # Specification
 
 ## Summary
-**Goal:** Fix the service worker so it never intercepts or caches requests to external API domains (Binance, CoinGecko, ICP/IC endpoints) while the device is online, eliminating the erroneous 503 offline error during live API calls.
+**Goal:** Update the Binance position risk API endpoint from v1 to v2 in the frontend.
 
 **Planned changes:**
-- Update `frontend/public/service-worker.js` to pass all requests to `fapi.binance.com`, `api.binance.com`, `api.coingecko.com`, and ICP/IC endpoints directly to the network when the device is online (`navigator.onLine === true`)
-- Retain the 503 JSON error response for those external API domains only when the device is genuinely offline (`navigator.onLine === false`)
-- Keep all existing app-shell and static asset caching behavior unchanged
+- In `frontend/src/lib/binance-auth.ts`, replace all references to `https://fapi.binance.com/fapi/v1/positionRisk` with `https://fapi.binance.com/fapi/v2/positionRisk`
+- In `frontend/src/hooks/useQueries.ts`, replace all references to `https://fapi.binance.com/fapi/v1/positionRisk` with `https://fapi.binance.com/fapi/v2/positionRisk`
+- Leave HMAC-SHA256 signing logic, polling interval, credential handling, and all other code unchanged
 
-**User-visible outcome:** Users on the Search tab can search for Binance USD-M perpetual pairs (e.g., BTCUSDT) and receive live ticker and kline data without hitting a 503 error while connected to the internet.
+**User-visible outcome:** The Open Positions section in the Search tab correctly fetches and displays live position data using the v2 Binance Futures endpoint.

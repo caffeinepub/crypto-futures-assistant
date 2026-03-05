@@ -45,6 +45,11 @@ export function clearCredentials(): void {
   localStorage.removeItem('cryptosmc-binance-secret-key');
 }
 
+/**
+ * Makes a signed request to the Binance Futures API directly from the browser
+ * using HMAC-SHA256. Credentials are read from localStorage and never sent to
+ * any backend canister.
+ */
 export async function fetchSignedBinance<T>(
   endpoint: string,
   credentials: BinanceCredentials,
@@ -88,11 +93,15 @@ export interface BinancePosition {
   notional: string;
 }
 
+/**
+ * Fetches all open positions from Binance Futures API directly in the browser.
+ * Uses HMAC-SHA256 signing with credentials stored in localStorage.
+ * Returns only positions with non-zero positionAmt.
+ */
 export async function fetchOpenPositions(credentials: BinanceCredentials): Promise<BinancePosition[]> {
   const positions = await fetchSignedBinance<BinancePosition[]>(
-    '/fapi/v1/positionRisk',
+    '/fapi/v2/positionRisk',
     credentials
   );
-  // Filter only positions with non-zero amount
   return positions.filter(p => parseFloat(p.positionAmt) !== 0);
 }

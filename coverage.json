@@ -1,35 +1,31 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-27T00:26:04.447Z",
+  "generatedAt": "2026-02-27T04:23:36.527Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
     "total": 1,
-    "implemented": 1,
+    "implemented": 0,
     "items": [
       {
-        "id": "REQ-12",
-        "summary": "Fix the service worker in frontend/public/service-worker.js so that requests to external API domains (fapi.binance.com, api.binance.com, api.coingecko.com, and any ICP/IC endpoints) are NEVER intercepted or cached — they must always pass through directly to the network. Remove any fetch event handler logic that returns a 503 offline error for these domains when the device has an active network connection. The offline 503 error response should only be triggered for those API domains when the device is genuinely offline (navigator.onLine === false). All app-shell and static asset caching behavior should remain unchanged.",
-        "status": "implemented",
+        "id": "REQ-16",
+        "summary": "In `frontend/src/lib/binance-auth.ts` and `frontend/src/hooks/useQueries.ts`, update every reference to the Binance position risk endpoint from `https://fapi.binance.com/fapi/v1/positionRisk` to `https://fapi.binance.com/fapi/v2/positionRisk`. Ensure the HMAC-SHA256 signing logic and all other request parameters remain unchanged.",
+        "status": "missing",
         "plannedFiles": [
-          "frontend/public/service-worker.js"
+          "frontend/src/lib/binance-auth.ts",
+          "frontend/src/hooks/useQueries.ts"
         ],
-        "matchedFiles": [
-          "frontend/public/service-worker.js"
-        ]
+        "matchedFiles": []
       }
     ]
   },
   "changedFiles": [
     "build-request.json",
-    "build-template/README.md",
     "feature_evidence.json",
-    "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
-    "frontend/public/service-worker.js",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

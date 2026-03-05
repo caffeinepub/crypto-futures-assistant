@@ -1,35 +1,29 @@
-import Int "mo:core/Int";
 import Map "mo:core/Map";
 import Text "mo:core/Text";
 import Array "mo:core/Array";
 import Iter "mo:core/Iter";
-import Float "mo:core/Float";
-import Char "mo:core/Char";
-import Prim "mo:prim";
-import List "mo:core/List";
 import Time "mo:core/Time";
-import Order "mo:core/Order";
+import List "mo:core/List";
 import Runtime "mo:core/Runtime";
-import Principal "mo:core/Principal";
 import OutCall "http-outcalls/outcall";
-import MixinAuthorization "authorization/MixinAuthorization";
+import Principal "mo:core/Principal";
 import AccessControl "authorization/access-control";
+import MixinAuthorization "authorization/MixinAuthorization";
 
 actor {
   let accessControlState = AccessControl.initState();
   include MixinAuthorization(accessControlState);
 
-  public type SignalType = Text;
-
   public type PatternEntry = {
     symbol : Text;
-    signalType : SignalType;
+    signalType : Text;
     occurrenceCount : Nat;
     precedingMoveCount : Nat;
   };
 
   var patternEntries : [(Text, PatternEntry)] = [];
   let patternMap = Map.empty<Text, PatternEntry>();
+  var cachedCoinGeckoPrices : Text = "";
 
   system func preupgrade() {
     patternEntries := patternMap.entries().toArray();
@@ -43,23 +37,27 @@ actor {
     patternEntries := [];
   };
 
-  func patternKey(symbol : Text, signalType : SignalType) : Text {
+  func patternKey(symbol : Text, signalType : Text) : Text {
     symbol # "#" # signalType;
   };
 
   public shared ({ caller }) func recordSignalObservation(
     symbol : Text,
-    signalType : SignalType,
+    signalType : Text,
     precededSignificantMove : Bool,
   ) : async () {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only users can record signal observations");
+    };
+
     let key = patternKey(symbol, signalType);
 
     let existing = patternMap.get(key);
     let updated : PatternEntry = switch (existing) {
-      case null {
+      case (null) {
         {
-          symbol = symbol;
-          signalType = signalType;
+          symbol;
+          signalType;
           occurrenceCount = 1;
           precedingMoveCount = if (precededSignificantMove) { 1 } else { 0 };
         };
@@ -76,9 +74,12 @@ actor {
     patternMap.add(key, updated);
   };
 
-  public query func getPatternScores(symbol : Text) : async [PatternEntry] {
+  public query ({ caller }) func getPatternScores(symbol : Text) : async [PatternEntry] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can view pattern scores");
+    };
     let results = List.empty<PatternEntry>();
-    for ((key, entry) in patternMap.entries()) {
+    for ((_, entry) in patternMap.entries()) {
       if (entry.symbol == symbol) {
         results.add(entry);
       };
@@ -86,28 +87,35 @@ actor {
     results.toArray();
   };
 
-  public query func getAllPatternScores() : async [PatternEntry] {
+  public query ({ caller }) func getAllPatternScores() : async [PatternEntry] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can view all pattern scores");
+    };
     patternMap.values().toArray();
   };
 
-  var cachedCoinGeckoPrices : Text = "";
-
   public shared ({ caller }) func fetchAndCacheCoinGeckoPrices() : async Text {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can fetch and cache CoinGecko prices");
+    };
     let url = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,solana&vs_currencies=usd";
-    let result = await OutCall.httpGetRequest(url, [], transform);
-    cachedCoinGeckoPrices := result;
-    result;
+    let response = await OutCall.httpGetRequest(url, [], transform);
+    cachedCoinGeckoPrices := response;
+    response;
   };
 
-  public query func getCoinGeckoPrices() : async Text {
+  public query ({ caller }) func getCoinGeckoPrices() : async Text {
     cachedCoinGeckoPrices;
   };
 
-  public query func transform(input : OutCall.TransformationInput) : async OutCall.TransformationOutput {
+  public query ({ caller }) func transform(input : OutCall.TransformationInput) : async OutCall.TransformationOutput {
     OutCall.transform(input);
   };
 
   public shared ({ caller }) func clear() : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can clear pattern data");
+    };
     patternMap.clear();
   };
 };
