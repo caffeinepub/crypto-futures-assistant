@@ -2,6 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Eye, EyeOff, Key, Loader2, Search, Wifi } from "lucide-react";
 import React, { useState, useMemo, useEffect } from "react";
 import ErrorBanner from "../components/ErrorBanner";
+import PositionRecommendationPanel from "../components/PositionRecommendationPanel";
 import PositionRow from "../components/PositionRow";
 import RecommendationCard from "../components/RecommendationCard";
 import { useFavorites } from "../hooks/useFavorites";
@@ -358,6 +359,10 @@ export default function SearchTab() {
                     </div>
                   </div>
                 )}
+
+              {positions.length > 0 && (
+                <PositionRecommendationPanel positions={positions} />
+              )}
 
               {positions.length > 0 && (
                 <div className="space-y-2">
