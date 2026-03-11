@@ -1,37 +1,44 @@
 # Crypto Futures Assistant
 
 ## Current State
-The Search tab displays open Binance positions fetched directly from the browser using HMAC-SHA256 signed requests to `fapi.binance.com/fapi/v2/positionRisk`. Each position is shown via `PositionRow` with entry price, mark price, unrealized P&L, liquidation price, and leverage. No actionable recommendations exist beyond visual alerts (AlertTriangle icon for large P&L).
+MarketTab exibe lista de pares USD-M da Binance com preço, variação 24h e volume. Ordenação por volume/change/price. Filtro de busca por nome.
 
 ## Requested Changes (Diff)
 
 ### Add
-- A new **"Painel de Recomendações"** section in the Search tab, rendered above the full positions list when any position has P&L% below -10%.
-- A utility function `computePositionRecommendations(positions: BinancePosition[])` that evaluates each position and returns structured recommendations based on:
-  - P&L percentage = (unRealizedProfit / |entryPrice * positionAmt|) * 100
-  - Proximity to liquidation price (distance %)
-  - Leverage level
-  - Returns one of: "considere reduzir posição", "mover stop-loss para X", "fechar posição — risco de liquidação alto"
-- A `PositionRecommendationPanel` component displaying the list of critical recommendations with visual severity levels (warning/danger).
+- Nova aba/toggle "Scanner" dentro do MarketTab (ao lado dos botões de sort existentes)
+- Módulo `lib/pre-pump-scanner.ts`: lógica de análise para os 6 sinais de pré-alta
+- Componente `ScannerTab.tsx`: lista rankeada de ativos por score de confluência
+- Varredura completa de todos os pares a cada 15 minutos (background)
+- Monitoramento dos top 50 (por volume) a cada 30 segundos
 
 ### Modify
-- `SearchTab.tsx`: import and render `PositionRecommendationPanel` above the positions list when `credsSaved && positions.length > 0`.
-- The `fetchOpenPositions` function already returns all positions (no filter needed); the panel filters to only those with pnlPct < -10%.
+- `MarketTab.tsx`: adicionar toggle entre modo "Market" e modo "Scanner"
 
 ### Remove
-- Nothing removed.
+- Nada
 
 ## Implementation Plan
-1. Create `src/lib/position-recommendations.ts` with `computePositionRecommendations()` logic:
-   - Calculate P&L% for each position
-   - Filter positions where pnlPct < -10%
-   - For each: check liq distance (<5% → "fechar posição — risco de liquidação alto"), check leverage (>=20x AND pnlPct < -15% → same), else if pnlPct < -20% → "fechar posição", else if pnlPct < -15% → "considere reduzir posição", else → "mover stop-loss para {suggested_price}"
-   - Suggest stop-loss = entry price * (1 - 0.05) for LONG, entry price * (1 + 0.05) for SHORT
-2. Create `src/components/PositionRecommendationPanel.tsx`:
-   - Accept `positions: BinancePosition[]` prop
-   - Internally call `computePositionRecommendations`
-   - Render a card-style panel with neon-orange/neon-red accent depending on severity
-   - List each recommendation with symbol, direction badge, P&L%, and action text
-   - Show nothing if no recommendations
-3. Update `SearchTab.tsx`:
-   - Import and render `<PositionRecommendationPanel positions={positions} />` above the positions list, inside the `credsSaved` block
+
+### Sinais implementados em `lib/pre-pump-scanner.ts`
+1. **Correlação exponencial ao BTC aumentando**: busca klines de BTC e do ativo em 1h, calcula correlação dos retornos log nas últimas 24 velas, verifica se está crescendo (comparando correlação recente vs anterior)
+2. **Open Interest aumentando**: endpoint `GET /fapi/v1/openInterestHist` — compara OI atual vs 2 períodos atrás
+3. **Volume de trades aumentando**: usa dados do ticker 24h + klines 15m para comparar volume atual vs médio
+4. **Funding Rate negativo ou negativando**: endpoint `GET /fapi/v1/fundingRate` — último funding rate < 0 ou última variação < 0
+5. **Confluência com shorts sendo abertos**: `GET /fapi/v1/topLongShortPositionRatio` — ratio short crescendo
+6. **RSI positivo (>40 ou cruzando 40) em todos os 6 TFs**: calcula RSI(14) para 3m, 5m, 15m, 1h, 4h, 1d via klines
+
+### Score de confluência
+- Cada sinal ativo = 1 ponto (máximo 6)
+- RSI conta como 1 ponto se TODOS os TFs passam no critério
+- Lista ordenada por score desc, depois por volume
+
+### Ciclos de varredura
+- Varredura completa: todos os pares, a cada 15min — background com Web Worker ou setTimeout em lotes (20 pares por vez para não bloquear)
+- Monitoramento rápido: top 50 por volume, a cada 30s — atualiza scores parciais
+
+### UI (ScannerTab)
+- Header com status do scanner (último scan, próximo scan, progresso)
+- Lista de ativos com score visual (badge colorido por score), sinais ativos como ícones/chips
+- Cada linha mostra: símbolo, score (ex: 5/6), sinais ativos, preço atual, variação 24h
+- Filtragem mínima: score >= X (slider ou botões)
