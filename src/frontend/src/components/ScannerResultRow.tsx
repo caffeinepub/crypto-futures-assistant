@@ -1,6 +1,6 @@
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { AlertTriangle, ChevronDown, ChevronUp } from "lucide-react";
 import { useState } from "react";
-import type { ScanResult } from "../lib/pre-pump-scanner";
+import type { EvalResult, ScanResult } from "../lib/pre-pump-scanner";
 
 interface ScannerResultRowProps {
   result: ScanResult;
@@ -55,22 +55,63 @@ function ScoreBadge({ score }: { score: number }) {
   );
 }
 
+function DecisionBadge({
+  evalResult,
+  large = false,
+}: {
+  evalResult?: EvalResult;
+  large?: boolean;
+}) {
+  if (!evalResult) {
+    return (
+      <span
+        className={`inline-flex items-center rounded border px-1.5 py-0.5 font-mono font-semibold bg-white/5 text-muted-foreground/50 border-white/10 ${
+          large ? "text-[11px]" : "text-[9px]"
+        }`}
+      >
+        Avaliando…
+      </span>
+    );
+  }
+
+  const cfg = {
+    approve:
+      "bg-neon-green/20 text-neon-green border-neon-green/50 shadow-[0_0_6px_rgba(0,255,128,0.3)]",
+    manual_review: "bg-neon-orange/20 text-neon-orange border-neon-orange/50",
+    reject: "bg-neon-red/20 text-neon-red border-neon-red/50",
+  }[evalResult.decision];
+
+  const label = {
+    approve: "✓ APROVADO",
+    manual_review: "⚠ REVISÃO",
+    reject: "✗ REJEITADO",
+  }[evalResult.decision];
+
+  return (
+    <span
+      className={`inline-flex items-center rounded border font-mono font-bold ${
+        large ? "px-2 py-0.5 text-[11px]" : "px-1.5 py-0.5 text-[9px]"
+      } ${cfg}`}
+    >
+      {label}
+    </span>
+  );
+}
+
 export default function ScannerResultRow({
   result,
   rank,
   dataOcid,
 }: ScannerResultRowProps) {
   const [expanded, setExpanded] = useState(false);
-  const { signals } = result;
+  const { signals, evalResult } = result;
   const changePercent = Number.parseFloat(result.priceChangePercent);
   const isPositive = changePercent > 0;
   const changeColor = isPositive ? "text-neon-green" : "text-neon-red";
   const symbolBase = result.symbol.replace("USDT", "");
 
-  const rsiFailing = Object.entries(signals.rsiDetails).filter(([, v]) => !v);
-  const rsiPassing = Object.entries(signals.rsiDetails).filter(([, v]) => v);
   const showRsiDetail =
-    !signals.rsiPositive && (rsiPassing.length > 0 || rsiFailing.length > 0);
+    !signals.rsiPositive && Object.keys(signals.rsiDetails).length > 0;
 
   return (
     <div
@@ -101,6 +142,7 @@ export default function ScannerResultRow({
               {symbolBase}
             </span>
             <ScoreBadge score={signals.score} />
+            <DecisionBadge evalResult={evalResult} />
           </div>
           {/* Signal chips */}
           <div className="flex gap-1 mt-1 flex-wrap">
@@ -188,6 +230,7 @@ export default function ScannerResultRow({
               </div>
             );
           })}
+
           {/* RSI per-TF breakdown */}
           {Object.keys(signals.rsiDetails).length > 0 && (
             <div className="mt-2 pl-3 border-l border-white/10">
@@ -210,6 +253,102 @@ export default function ScannerResultRow({
               </div>
             </div>
           )}
+
+          {/* Evaluator section */}
+          <div className="mt-3 pt-2.5 border-t border-white/10 space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                Avaliador
+              </span>
+              <DecisionBadge evalResult={evalResult} large />
+              {evalResult && (
+                <span className="ml-auto text-[10px] font-mono text-muted-foreground">
+                  Confiança:{" "}
+                  <span
+                    className={
+                      evalResult.confidence >= 7
+                        ? "text-neon-green"
+                        : evalResult.confidence >= 4
+                          ? "text-neon-orange"
+                          : "text-neon-red"
+                    }
+                  >
+                    {evalResult.confidence.toFixed(1)}/10
+                  </span>
+                </span>
+              )}
+            </div>
+
+            {evalResult ? (
+              <>
+                {/* reason_short */}
+                <p className="text-[11px] text-foreground/80 leading-snug">
+                  {evalResult.reason_short}
+                </p>
+
+                {/* Pros */}
+                {evalResult.pros.length > 0 && (
+                  <div className="space-y-0.5">
+                    <div className="text-[9px] font-semibold uppercase tracking-wider text-neon-green/60 mb-0.5">
+                      Pontos Positivos
+                    </div>
+                    {evalResult.pros.map((pro) => (
+                      <div
+                        key={`pro-${pro.slice(0, 20)}`}
+                        className="flex items-start gap-1.5 text-[10px] text-foreground/70"
+                      >
+                        <span className="w-1.5 h-1.5 rounded-full bg-neon-green mt-0.5 flex-shrink-0" />
+                        {pro}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Cons */}
+                {evalResult.cons.length > 0 && (
+                  <div className="space-y-0.5">
+                    <div className="text-[9px] font-semibold uppercase tracking-wider text-neon-red/60 mb-0.5">
+                      Pontos Negativos
+                    </div>
+                    {evalResult.cons.map((con) => (
+                      <div
+                        key={`con-${con.slice(0, 20)}`}
+                        className="flex items-start gap-1.5 text-[10px] text-foreground/70"
+                      >
+                        <span className="w-1.5 h-1.5 rounded-full bg-neon-red mt-0.5 flex-shrink-0" />
+                        {con}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Risk flags */}
+                {evalResult.risk_flags.length > 0 && (
+                  <div className="space-y-0.5">
+                    <div className="text-[9px] font-semibold uppercase tracking-wider text-neon-orange/60 mb-0.5">
+                      Alertas de Risco
+                    </div>
+                    {evalResult.risk_flags.map((flag) => (
+                      <div
+                        key={`flag-${flag.slice(0, 20)}`}
+                        className="flex items-start gap-1.5 text-[10px] text-neon-orange/80"
+                      >
+                        <AlertTriangle
+                          size={9}
+                          className="mt-0.5 flex-shrink-0"
+                        />
+                        {flag}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            ) : (
+              <p className="text-[11px] text-muted-foreground/50">
+                Aguardando métricas de avaliação…
+              </p>
+            )}
+          </div>
         </div>
       )}
     </div>

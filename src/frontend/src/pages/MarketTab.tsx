@@ -16,6 +16,7 @@ import type { BinanceTicker } from "../hooks/useQueries";
 
 type SortKey = "volume" | "change" | "price";
 type ScanFilter = "all" | "5plus" | "4plus" | "3plus";
+type EvalFilter = "all" | "approve" | "manual_review" | "reject";
 
 function timeAgo(date: Date | null): string {
   if (!date) return "—";
@@ -30,6 +31,7 @@ export default function MarketTab() {
   const [sortKey, setSortKey] = useState<SortKey>("volume");
   const [scannerMode, setScannerMode] = useState(false);
   const [scanFilter, setScanFilter] = useState<ScanFilter>("all");
+  const [evalFilter, setEvalFilter] = useState<EvalFilter>("all");
 
   const scanner = usePumpScanner(tickers ?? []);
 
@@ -58,12 +60,35 @@ export default function MarketTab() {
 
   const filteredResults = useMemo(() => {
     let list = scanner.results;
+    // Signal count filter
     if (scanFilter === "5plus") list = list.filter((r) => r.signals.score >= 5);
     else if (scanFilter === "4plus")
       list = list.filter((r) => r.signals.score >= 4);
     else if (scanFilter === "3plus")
       list = list.filter((r) => r.signals.score >= 3);
+    // Eval decision filter
+    if (evalFilter !== "all") {
+      list = list.filter((r) => r.evalResult?.decision === evalFilter);
+    }
     return list;
+  }, [scanner.results, scanFilter, evalFilter]);
+
+  // Counts per eval decision (before eval filter, but after signal filter)
+  const evalCounts = useMemo(() => {
+    let base = scanner.results;
+    if (scanFilter === "5plus") base = base.filter((r) => r.signals.score >= 5);
+    else if (scanFilter === "4plus")
+      base = base.filter((r) => r.signals.score >= 4);
+    else if (scanFilter === "3plus")
+      base = base.filter((r) => r.signals.score >= 3);
+    return {
+      all: base.length,
+      approve: base.filter((r) => r.evalResult?.decision === "approve").length,
+      manual_review: base.filter(
+        (r) => r.evalResult?.decision === "manual_review",
+      ).length,
+      reject: base.filter((r) => r.evalResult?.decision === "reject").length,
+    };
   }, [scanner.results, scanFilter]);
 
   const gainers =
@@ -78,6 +103,34 @@ export default function MarketTab() {
     { value: "5plus", label: "5-6 sinais" },
     { value: "4plus", label: "4+ sinais" },
     { value: "3plus", label: "3+ sinais" },
+  ];
+
+  const evalFilterOptions: {
+    value: EvalFilter;
+    label: string;
+    activeClass: string;
+  }[] = [
+    {
+      value: "all",
+      label: `Todos (${evalCounts.all})`,
+      activeClass: "bg-white/10 text-foreground border-white/30",
+    },
+    {
+      value: "approve",
+      label: `✓ Aprovados (${evalCounts.approve})`,
+      activeClass:
+        "bg-neon-green/20 text-neon-green border-neon-green/50 shadow-[0_0_6px_rgba(0,255,128,0.2)]",
+    },
+    {
+      value: "manual_review",
+      label: `⚠ Revisão (${evalCounts.manual_review})`,
+      activeClass: "bg-neon-orange/20 text-neon-orange border-neon-orange/50",
+    },
+    {
+      value: "reject",
+      label: `✗ Rejeitados (${evalCounts.reject})`,
+      activeClass: "bg-neon-red/20 text-neon-red border-neon-red/50",
+    },
   ];
 
   return (
@@ -218,6 +271,27 @@ export default function MarketTab() {
           </>
         )}
       </div>
+
+      {/* Eval decision filter (scanner mode only) */}
+      {scannerMode && (
+        <div className="px-4 py-2 flex gap-1.5 flex-wrap border-b border-white/5 bg-white/[0.015]">
+          {evalFilterOptions.map(({ value, label, activeClass }) => (
+            <button
+              type="button"
+              key={value}
+              data-ocid="market.eval_filter.tab"
+              onClick={() => setEvalFilter(value)}
+              className={`px-2 py-1 rounded-md text-[10px] font-medium border transition-all ${
+                evalFilter === value
+                  ? activeClass
+                  : "bg-white/5 text-muted-foreground border-white/10 hover:border-white/20"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto">

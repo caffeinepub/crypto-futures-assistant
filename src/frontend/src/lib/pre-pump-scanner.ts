@@ -1,5 +1,14 @@
 // Pre-Pump Scanner — all Binance Futures API calls run in the browser
 
+import {
+  type EvalResult,
+  type EvaluatorMetrics,
+  evaluateSignals,
+} from "./signal-evaluator";
+
+export type { EvalResult, EvalDecision } from "./signal-evaluator";
+export type { EvaluatorMetrics };
+
 export interface SignalResult {
   btcCorrelation: boolean;
   openInterest: boolean;
@@ -17,6 +26,8 @@ export interface ScanResult {
   priceChangePercent: string;
   quoteVolume: string;
   signals: SignalResult;
+  evalMetrics?: EvaluatorMetrics;
+  evalResult?: EvalResult;
   scannedAt: number;
 }
 
@@ -205,6 +216,155 @@ async function signalRsi(
   return { rsiPositive: allPass, rsiDetails: details };
 }
 
+// ---------- Evaluator metric collection ----------
+async function collectEvaluatorMetrics(
+  symbol: string,
+): Promise<EvaluatorMetrics> {
+  const [coinKlines1h, btcCloses, lsrData, oiData, frData] =
+    await Promise.allSettled([
+      fetchKlines(symbol, "1h", 24),
+      getBtcCloses(),
+      fetch(
+        `${BASE}/topLongShortPositionRatio?symbol=${symbol}&period=5m&limit=4`,
+      ).then((r) =>
+        r.ok
+          ? (r.json() as Promise<{ longShortRatio: string }[]>)
+          : Promise.resolve([] as { longShortRatio: string }[]),
+      ),
+      fetch(`${BASE}/openInterestHist?symbol=${symbol}&period=5m&limit=8`).then(
+        (r) =>
+          r.ok
+            ? (r.json() as Promise<{ sumOpenInterest: string }[]>)
+            : Promise.resolve([] as { sumOpenInterest: string }[]),
+      ),
+      fetch(`${BASE}/fundingRate?symbol=${symbol}&limit=2`).then((r) =>
+        r.ok
+          ? (r.json() as Promise<{ fundingRate: string }[]>)
+          : Promise.resolve([] as { fundingRate: string }[]),
+      ),
+    ]);
+
+  // Coin & BTC closes
+  const coinCloses =
+    coinKlines1h.status === "fulfilled" ? coinKlines1h.value.closes : [];
+  const coinVols =
+    coinKlines1h.status === "fulfilled" ? coinKlines1h.value.volumes : [];
+  const btc =
+    btcCloses.status === "fulfilled" ? btcCloses.value : ([] as number[]);
+
+  // RSI
+  const coinRsi1h = computeRSI(coinCloses);
+  const btcRsi1h = computeRSI(btc.slice(-24));
+
+  // inResetWindow: BTC RSI dropped below 45 in last 12h
+  const inResetWindow = (() => {
+    const slice = btc.slice(-13);
+    for (let i = 1; i < slice.length; i++) {
+      const rsi = computeRSI(slice.slice(0, i + 1));
+      if (rsi < 45) return true;
+    }
+    return false;
+  })();
+
+  // EXP beta vs BTC (avg coin_return - btc_return over last 12 candles)
+  const expBetaBtc = (() => {
+    if (coinCloses.length < 13 || btc.length < 13) return 0;
+    const n = 12;
+    const coinSlice = coinCloses.slice(-n - 1);
+    const btcSlice = btc.slice(-n - 1);
+    let sum = 0;
+    for (let i = 1; i <= n; i++) {
+      const cr = (coinSlice[i] - coinSlice[i - 1]) / coinSlice[i - 1];
+      const br = (btcSlice[i] - btcSlice[i - 1]) / btcSlice[i - 1];
+      sum += cr - br;
+    }
+    return sum / n;
+  })();
+
+  // expResetGate: coin return > BTC return on the candle where BTC had its biggest drop
+  const expResetGate = (() => {
+    if (coinCloses.length < 13 || btc.length < 13) return false;
+    const n = 12;
+    const coinSlice = coinCloses.slice(-n - 1);
+    const btcSlice = btc.slice(-n - 1);
+    let worstBtcReturn = 0;
+    let worstIdx = -1;
+    for (let i = 1; i <= n; i++) {
+      const br = (btcSlice[i] - btcSlice[i - 1]) / btcSlice[i - 1];
+      if (br < worstBtcReturn) {
+        worstBtcReturn = br;
+        worstIdx = i;
+      }
+    }
+    if (worstIdx < 0) return false;
+    const coinReturnAtDrop =
+      (coinSlice[worstIdx] - coinSlice[worstIdx - 1]) / coinSlice[worstIdx - 1];
+    return coinReturnAtDrop > worstBtcReturn;
+  })();
+
+  // expNowGate: last 2h coin return > BTC return
+  const expNowGate = (() => {
+    if (coinCloses.length < 3 || btc.length < 3) return false;
+    const coinReturn =
+      (coinCloses[coinCloses.length - 1] - coinCloses[coinCloses.length - 3]) /
+      coinCloses[coinCloses.length - 3];
+    const btcReturn =
+      (btc[btc.length - 1] - btc[btc.length - 3]) / btc[btc.length - 3];
+    return coinReturn > btcReturn;
+  })();
+
+  // LSR
+  const lsr = (() => {
+    if (lsrData.status !== "fulfilled" || lsrData.value.length === 0)
+      return null;
+    const latest = lsrData.value[lsrData.value.length - 1];
+    const v = Number.parseFloat(latest.longShortRatio);
+    return Number.isFinite(v) ? v : null;
+  })();
+
+  // OI trend
+  const oiTrend: "up" | "down" | "neutral" = (() => {
+    if (oiData.status !== "fulfilled" || oiData.value.length < 4)
+      return "neutral";
+    const d = oiData.value;
+    const latest = Number.parseFloat(d[d.length - 1].sumOpenInterest);
+    const prev = Number.parseFloat(d[d.length - 4].sumOpenInterest);
+    if (latest > prev * 1.005) return "up";
+    if (latest < prev * 0.995) return "down";
+    return "neutral";
+  })();
+
+  // Trade heat (use coinVols from 1h klines)
+  const tradeHeatOk = (() => {
+    if (coinVols.length < 6) return false;
+    const recent = coinVols[coinVols.length - 1];
+    const avg = coinVols.slice(-6, -1).reduce((s, v) => s + v, 0) / 5;
+    return recent > avg * 1.5;
+  })();
+
+  // Funding rate value
+  const fundingRateVal = (() => {
+    if (frData.status !== "fulfilled" || frData.value.length === 0) return null;
+    const v = Number.parseFloat(
+      frData.value[frData.value.length - 1].fundingRate,
+    );
+    return Number.isFinite(v) ? v : null;
+  })();
+
+  return {
+    lsr,
+    oiTrend,
+    tradeHeatOk,
+    btcRsi1h,
+    coinRsi1h,
+    expBetaBtc,
+    expResetGate,
+    expNowGate,
+    inResetWindow,
+    fundingRateVal,
+  };
+}
+
 // ---------- Cache ----------
 interface CacheEntry {
   result: ScanResult;
@@ -238,6 +398,7 @@ async function scanSymbol(
     fundingRate,
     shortConfluence,
     rsiResult,
+    evalMetricsResult,
   ] = await Promise.allSettled([
     signalBtcCorrelation(symbol),
     signalOpenInterest(symbol),
@@ -245,6 +406,7 @@ async function scanSymbol(
     signalFundingRate(symbol),
     signalShortConfluence(symbol),
     signalRsi(symbol),
+    collectEvaluatorMetrics(symbol),
   ]);
 
   const signals: SignalResult = {
@@ -271,12 +433,24 @@ async function scanSymbol(
     signals.rsiPositive,
   ].filter(Boolean).length;
 
+  const evalMetrics =
+    evalMetricsResult.status === "fulfilled"
+      ? evalMetricsResult.value
+      : undefined;
+
+  const evalResult =
+    evalMetrics !== undefined
+      ? evaluateSignals(signals, evalMetrics)
+      : undefined;
+
   const result: ScanResult = {
     symbol,
     lastPrice,
     priceChangePercent,
     quoteVolume,
     signals,
+    evalMetrics,
+    evalResult,
     scannedAt: Date.now(),
   };
   scanCache.set(symbol, { result, ts: Date.now() });
